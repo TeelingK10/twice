@@ -615,7 +615,7 @@ function appHTML() {
     <div class="overlay" id="overlay"></div>
     <div class="sidebar" id="sidebar">
       <div class="sidebar-user ${u}">
-        <div class="av">${isK?'🏋️':'💪'}</div>
+        <div class="av">${isK?'🌊':'🏝️'}</div>
         <div><div class="uname">${isK?'かいと':'なな'}</div><div style="font-size:10px;color:#4b5563;">Member</div></div>
       </div>
       ${navItems.map(([p,gu,l]) => {
