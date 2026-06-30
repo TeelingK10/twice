@@ -144,8 +144,8 @@ function loginHTML() {
         <div class="app-sub">OUR LIFE TOGETHER</div>
         <div class="status-badge connected">✅ Google スプレッドシート連携済み</div>
         <div class="user-grid">
-          <button class="user-btn kaito" id="btn-kaito"><div class="user-avatar">🏋️</div><div>かいと</div></button>
-          <button class="user-btn nana"  id="btn-nana"> <div class="user-avatar">💪</div><div>なな</div></button>
+          <button class="user-btn kaito" id="btn-kaito"><div class="user-avatar">🌊</div><div>かいと</div></button>
+          <button class="user-btn nana"  id="btn-nana"> <div class="user-avatar">🏝️</div><div>なな</div></button>
         </div>
         <div class="login-hint">ユーザーを選択してください</div>
       </div>
