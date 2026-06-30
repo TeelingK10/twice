@@ -116,13 +116,8 @@ function getLastRecord(exercise, workouts) {
 }
 function numInput(name, placeholder, value='', step=1, isK=true) {
   const pf = !isK ? 'pf' : '';
-  return `
-    <div class="num-input-wrap">
-      <button type="button" class="num-btn minus" data-target="${name}">−</button>
-      <input name="${name}" type="number" inputmode="numeric" pattern="[0-9]*"
-        placeholder="${placeholder}" value="${value}" step="${step}" required class="${pf}">
-      <button type="button" class="num-btn plus" data-target="${name}">＋</button>
-    </div>`;
+  return `<input name="${name}" type="number" inputmode="decimal"
+        placeholder="${placeholder}" value="${value}" step="${step}" required class="${pf}">`;
 }
 function yen(n) { return Number(n||0).toLocaleString('ja-JP'); }
 function escapeHtml(s) {
@@ -379,12 +374,8 @@ function gymMenuHTML(isK, ac, gm, gw, canEdit) {
             ${canEdit ? `
             <div class="menu-row-right">
               ${m.video_url?`<a href="${m.video_url}" target="_blank" class="video-btn ${!isK?'purple-video':''}">▶ 動画</a>`:''}
-              <div class="num-input-wrap quick-weight-wrap" style="width:120px;">
-                <button type="button" class="num-btn minus" data-qw-target="qw-${m.id}">−</button>
-                <input id="qw-${m.id}" type="number" inputmode="decimal" step="0.5"
-                  value="${last?last.weight:''}" placeholder="kg" style="background:#0f0f0f;color:white;border:none;border-left:1px solid #2c2c2c;border-right:1px solid #2c2c2c;text-align:center;padding:12px 4px;font-size:14px;">
-                <button type="button" class="num-btn plus" data-qw-target="qw-${m.id}">＋</button>
-              </div>
+              <input id="qw-${m.id}" type="number" inputmode="decimal" step="0.5" class="qty-input"
+                value="${last?last.weight:''}" placeholder="kg">
               <button class="quick-add-btn ${!isK?'purple-quick':''}"
                 data-exercise="${escapeHtml(m.exercise)}"
                 data-weight-input="qw-${m.id}"
@@ -514,7 +505,7 @@ function moneyHTML(u, isK, ac) {
           <label class="kind-expense-label"><input type="radio" name="kind" value="wallet_expense"><span>💸 財布から支出</span></label>
           <label class="kind-tatekae-label"><input type="radio" name="kind" value="tatekae"><span>🤝 立て替え</span></label>
         </div>
-        <select name="category" class="money-cat-select" style="padding:12px;border:1px solid #322640;border-radius:14px;background:#15101c;color:white;font-size:14px;">
+        <select name="category" class="money-cat-select">
           ${WALLET_CATS.map(c=>`<option value="${c}">${c}</option>`).join('')}
         </select>
         ${numInput('amount','金額 ¥','',100,isK)}
@@ -558,11 +549,11 @@ function shopsHTML(u, isK, ac) {
       <div class="section-title" style="color:#38bdf8;">➕ ADD SHOP</div>
       <form class="add-form" id="form-shop">
         <input name="name" placeholder="お店の名前" required class="${!isK?'pf':''}">
-        <select name="category" required style="padding:12px;border:1px solid #2c2c2c;border-radius:12px;background:#0f0f0f;color:white;font-size:14px;">
+        <select name="category" required>
           ${SHOP_CATS.map(c=>`<option value="${c}">${c}</option>`).join('')}
         </select>
         <input name="area" placeholder="エリア（任意）" class="${!isK?'pf':''}">
-        <select name="rating" style="padding:12px;border:1px solid #2c2c2c;border-radius:12px;background:#0f0f0f;color:white;font-size:14px;">
+        <select name="rating">
           <option value="5">★★★★★</option>
           <option value="4">★★★★☆</option>
           <option value="3" selected>★★★☆☆</option>
@@ -722,20 +713,6 @@ function bindEvents() {
   // グラフ種目選択
   document.querySelectorAll('[data-ex]').forEach(btn=>{
     btn.addEventListener('click', ()=>{ state.selectedEx=btn.dataset.ex; render(); });
-  });
-
-  // +/- ボタン（通常フォーム & クイック記録の重さ入力）
-  document.querySelectorAll('.num-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      let input;
-      if (btn.dataset.qwTarget) input = document.getElementById(btn.dataset.qwTarget);
-      else input = btn.closest('.num-input-wrap').querySelector('input');
-      if (!input) return;
-      const step = parseFloat(input.step)||1;
-      const val  = parseFloat(input.value)||0;
-      if (btn.classList.contains('plus')) input.value = Math.round((val+step)*100)/100;
-      else input.value = Math.max(0, Math.round((val-step)*100)/100);
-    });
   });
 
   // ワンタップ記録（重さは入力欄から取得＝編集可能）

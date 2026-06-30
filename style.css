@@ -115,14 +115,21 @@ button{font-family:inherit;}
 /* ========================================
    FORM
 ======================================== */
-.add-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;}
+.add-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
 .add-form input, .add-form select{
-  padding:12px;border:1px solid #d6eaf8;border-radius:14px;
-  background:#eef7fd;color:#1e293b;font-size:15px;width:100%;font-weight:600;
+  padding:13px 14px;border:1px solid #d6eaf8;border-radius:14px;
+  background:#eef7fd;color:#1e293b;font-size:16px;width:100%;font-weight:600;
+  min-height:48px;
+}
+.add-form select{
+  appearance:none;-webkit-appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%235b7a99'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;background-size:18px;
+  padding-right:38px;
 }
 .add-form input:focus, .add-form select:focus{outline:none;border-color:#fb923c;box-shadow:0 0 0 3px rgba(249,115,22,0.15);}
 .add-form input.pf:focus{border-color:#c084fc;box-shadow:0 0 0 3px rgba(168,85,247,0.15);}
-.submit-btn{padding:12px;border:none;border-radius:14px;color:white;font-size:15px;cursor:pointer;font-weight:800;transition:0.2s;}
+.submit-btn{padding:14px;border:none;border-radius:14px;color:white;font-size:16px;cursor:pointer;font-weight:800;transition:0.2s;min-height:48px;}
 .submit-btn.orange{background:linear-gradient(135deg,#fdba74,#fb923c);}
 .submit-btn.orange:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 6px 16px rgba(251,146,60,0.28);}
 .submit-btn.purple{background:linear-gradient(135deg,#d8b4fe,#c084fc);}
@@ -143,7 +150,7 @@ button{font-family:inherit;}
 .workout-date{color:#94a3b8;font-size:11px;margin-top:10px;}
 .pr-badge{position:absolute;top:12px;right:12px;background:#ffedd5;color:#c2410c;font-size:10px;padding:3px 9px;border-radius:20px;font-weight:800;}
 .pr-badge.pp{background:#f3e8ff;color:#9333ea;}
-.del-btn{margin-top:12px;background:#f87171;border:none;color:white;padding:6px 12px;border-radius:14px;font-size:11px;cursor:pointer;font-weight:700;transition:0.2s;}
+.del-btn{margin-top:12px;background:#f87171;border:none;color:white;padding:9px 14px;border-radius:14px;font-size:12px;cursor:pointer;font-weight:700;transition:0.2s;min-height:38px;}
 .del-btn:hover{background:#ef4444;transform:scale(1.05);}
 
 /* ========================================
@@ -160,7 +167,7 @@ button{font-family:inherit;}
    WEEKLY MENU
 ======================================== */
 .day-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
-.day-tab{padding:7px 16px;border-radius:14px;border:1px solid #d6eaf8;background:#eef7fd;color:#5b7a99;cursor:pointer;font-size:12px;font-weight:700;transition:0.2s;}
+.day-tab{padding:10px 18px;border-radius:14px;border:1px solid #d6eaf8;background:#eef7fd;color:#5b7a99;cursor:pointer;font-size:13px;font-weight:700;transition:0.2s;min-height:40px;}
 .day-tab:hover{transform:translateY(-1px);}
 .day-tab.ao{background:#fb923c;color:white;border-color:#fb923c;}
 .day-tab.ap{background:#c084fc;color:white;border-color:#c084fc;}
@@ -211,25 +218,14 @@ button{font-family:inherit;}
 }
 
 /* ========================================
-   数字入力 +/- ボタン
+   数字入力（キーボード入力のみ）
 ======================================== */
-.num-input-wrap{
-  display:flex;align-items:center;gap:0;
-  border:1px solid #d6eaf8;border-radius:12px;overflow:hidden;
-  background:#eef7fd;
+.qty-input{
+  border:1px solid #d6eaf8;border-radius:12px;
+  background:#eef7fd;color:#1e293b;padding:13px 14px;font-size:16px;font-weight:700;
+  text-align:center;min-height:48px;width:90px;flex-shrink:0;
 }
-.num-input-wrap input{
-  flex:1;text-align:center;border:none;border-left:1px solid #d6eaf8;
-  border-right:1px solid #d6eaf8;border-radius:0;min-width:0;
-  background:#eef7fd;color:#1e293b;padding:12px 6px;font-size:16px;
-}
-.num-input-wrap input:focus{outline:none;background:#eaf6ff;}
-.num-btn{
-  width:44px;height:48px;border:none;background:#ffffff;color:#5b7a99;
-  font-size:20px;cursor:pointer;transition:0.2s;flex-shrink:0;
-}
-.num-btn:hover{background:#fb923c;color:white;}
-.num-btn:active{transform:scale(0.95);}
+.qty-input:focus{outline:none;border-color:#fb923c;box-shadow:0 0 0 3px rgba(249,115,22,0.15);}
 
 /* ========================================
    Weekly Menu — 動画リンク
@@ -238,17 +234,17 @@ button{font-family:inherit;}
 .menu-row-left{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;}
 .menu-row-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 .video-btn{
-  display:inline-block;background:#f87171;color:white;
-  padding:6px 12px;border-radius:12px;font-size:12px;
+  display:inline-flex;align-items:center;background:#f87171;color:white;
+  padding:10px 14px;border-radius:12px;font-size:13px;min-height:40px;
   text-decoration:none;transition:0.2s;white-space:nowrap;
 }
 .video-btn:hover{background:#ef4444;transform:scale(1.05);}
 .video-btn.purple-video{background:#c084fc;}
-.video-btn.purple-video:hover{background:#c084fc;}
+.video-btn.purple-video:hover{background:#a855f7;}
 
 @media(max-width:700px){
   .menu-row{flex-wrap:wrap;}
-  .menu-row-right{width:100%;justify-content:flex-end;}
+  .menu-row-right{width:100%;justify-content:flex-end;flex-wrap:wrap;}
 }
 
 /* ========================================
@@ -258,8 +254,8 @@ button{font-family:inherit;}
   display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;
 }
 .ex-sel-btn{
-  padding:5px 12px;border-radius:14px;border:1px solid #d6eaf8;
-  background:#eef7fd;color:#5b7a99;cursor:pointer;font-size:12px;transition:0.2s;
+  padding:8px 14px;border-radius:14px;border:1px solid #d6eaf8;
+  background:#eef7fd;color:#5b7a99;cursor:pointer;font-size:13px;transition:0.2s;min-height:38px;
 }
 .ex-sel-btn.active-o{background:#fb923c;color:white;border-color:#fb923c;}
 .ex-sel-btn.active-p{background:#c084fc;color:white;border-color:#c084fc;}
@@ -268,13 +264,13 @@ button{font-family:inherit;}
    Weekly Menu — ワンタップ記録ボタン
 ======================================== */
 .quick-add-btn{
-  padding:6px 12px;border-radius:12px;border:none;
-  background:#fb923c;color:white;font-size:12px;
-  cursor:pointer;transition:0.2s;white-space:nowrap;font-weight:600;
+  padding:10px 16px;border-radius:12px;border:none;min-height:40px;
+  background:#fb923c;color:white;font-size:13px;
+  cursor:pointer;transition:0.2s;white-space:nowrap;font-weight:700;
 }
-.quick-add-btn:hover{background:#fb923c;transform:scale(1.05);}
+.quick-add-btn:hover{background:#ea580c;transform:scale(1.05);}
 .quick-add-btn.purple-quick{background:#c084fc;}
-.quick-add-btn.purple-quick:hover{background:#c084fc;}
+.quick-add-btn.purple-quick:hover{background:#a855f7;}
 .quick-add-btn:disabled{background:#94a3b8;cursor:default;}
 
 /* ========================================
@@ -443,8 +439,8 @@ button{font-family:inherit;}
 
 .type-toggle{display:flex;gap:8px;grid-column:1 / -1;flex-wrap:wrap;}
 .type-toggle label{
-  flex:1;min-width:120px;text-align:center;padding:12px 8px;border-radius:14px;border:1px solid #d6eaf8;
-  background:#eef7fd;color:#5b7a99;cursor:pointer;font-size:13px;font-weight:700;transition:0.2s;
+  flex:1;min-width:120px;text-align:center;padding:14px 8px;border-radius:14px;border:1px solid #d6eaf8;
+  background:#eef7fd;color:#5b7a99;cursor:pointer;font-size:14px;font-weight:700;transition:0.2s;min-height:48px;display:flex;align-items:center;justify-content:center;
 }
 .type-toggle input{display:none;}
 .type-toggle label.kind-deposit-label:has(input:checked){background:rgba(34,197,94,0.18);border-color:#4ade80;color:#4ade80;}
@@ -463,7 +459,7 @@ button{font-family:inherit;}
 .money-who{font-size:11px;color:#6b7280;font-weight:700;}
 .money-who.kaito{color:#fb923c;}
 .money-who.nana{color:#c084fc;}
-.del-icon-btn{background:#f87171;border:none;color:white;width:26px;height:26px;border-radius:12px;cursor:pointer;font-size:12px;line-height:1;}
+.del-icon-btn{background:#f87171;border:none;color:white;width:34px;height:34px;border-radius:12px;cursor:pointer;font-size:14px;line-height:1;flex-shrink:0;}
 .del-icon-btn:hover{background:#ef4444;}
 
 /* ========================================
