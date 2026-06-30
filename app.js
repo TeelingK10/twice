@@ -19,7 +19,7 @@ const state = {
   calYear:     new Date().getFullYear(),
   calMonth:    new Date().getMonth(),
   calSelected: null,
-  moneyMonth:  new Date().toISOString().slice(0,7), // 'YYYY-MM'
+  moneyMonth:  localMonthStr(), // 'YYYY-MM'（現状未使用）
 };
 
 const DAY_NAMES   = ['月','火','水','木','金','土','日'];
@@ -31,18 +31,29 @@ function todayIndex() {
   const d = new Date().getDay();
   return d === 0 ? 6 : d - 1;
 }
+// ローカルタイムゾーンでの 'YYYY-MM-DD' / 'YYYY-MM' を返す
+// （toISOString()はUTC基準のため、JSTだと日付/月の境目がズレることがある）
+function localDateStr(d = new Date()) {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function localMonthStr(d = new Date()) {
+  return localDateStr(d).slice(0,7);
+}
 
 // ============================================================
 //  GAS API
 // ============================================================
 async function gasGet(params) {
-  const url = GAS_URL + '?' + new URLSearchParams(params).toString();
-  const res = await fetch(url);
+  // キャッシュ無効化（スマホブラウザがGETを勝手にキャッシュして
+  // 保存直後の再取得で古いデータが返るのを防ぐ）
+  const url = GAS_URL + '?' + new URLSearchParams({ ...params, _ts: Date.now() }).toString();
+  const res = await fetch(url, { cache: 'no-store' });
   return res.json();
 }
 async function gasPost(params) {
-  const url = GAS_URL + '?' + new URLSearchParams(params).toString();
-  const res = await fetch(url, { method: 'POST' });
+  const url = GAS_URL + '?' + new URLSearchParams({ ...params, _ts: Date.now() }).toString();
+  const res = await fetch(url, { method: 'POST', cache: 'no-store' });
   return res.json();
 }
 
@@ -206,7 +217,7 @@ function homeHTML() {
 // ============================================================
 function calendarHTML(isK, ac, gw) {
   const year = state.calYear, month = state.calMonth;
-  const today = new Date().toISOString().slice(0,10);
+  const today = localDateStr();
   const trainedDates = new Set(gw.map(w => w.date));
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -268,7 +279,7 @@ function calendarHTML(isK, ac, gw) {
 function getStreak(trainedDates, today) {
   let streak = 0, d = new Date(today);
   while (true) {
-    const str = d.toISOString().slice(0,10);
+    const str = localDateStr(d);
     if (trainedDates.has(str)) { streak++; d.setDate(d.getDate()-1); } else break;
   }
   return streak;
@@ -408,7 +419,7 @@ function gymHTML(gymUser) {
   const gw = state.workouts.filter(w=>w.user===gymUser);
   const gm = state.menus.filter(m=>m.user===gymUser);
   const pr = getPR(gw);
-  const today = new Date().toISOString().slice(0,10);
+  const today = localDateStr();
   const tabs = [['log','📝 Log'],['calendar','📅 Calendar'],['pr','🏆 Records'],['menu','⚙️ Menu']];
   const subnav = `
     <div class="subnav">
@@ -458,11 +469,11 @@ function computeImbalance(money) {
 function moneyHTML(u, isK, ac) {
   const wallet = computeWallet(state.money);
   const imbalance = computeImbalance(state.money);
-  const thisMonth = new Date().toISOString().slice(0,7);
+  const thisMonth = localMonthStr();
   const monthMoney = state.money.filter(m => (m.date||'').startsWith(thisMonth));
   const monthDeposit = monthMoney.filter(m=>m.kind==='deposit').reduce((s,m)=>s+m.amount,0);
   const monthExpense = monthMoney.filter(m=>m.kind==='wallet_expense').reduce((s,m)=>s+m.amount,0);
-  const today = new Date().toISOString().slice(0,10);
+  const today = localDateStr();
 
   const owerUser  = imbalance > 0 ? 'nana' : 'kaito';
   const owedUser  = imbalance > 0 ? 'kaito' : 'nana';
@@ -718,7 +729,7 @@ function bindEvents() {
   // ワンタップ記録（重さは入力欄から取得＝編集可能）
   document.querySelectorAll('.quick-add-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
-      const today = new Date().toISOString().slice(0,10);
+      const today = localDateStr();
       const weightInput = btn.dataset.weightInput ? document.getElementById(btn.dataset.weightInput) : null;
       const weight = weightInput ? (parseFloat(weightInput.value)||0) : (parseFloat(btn.dataset.weight)||0);
       const data = {
@@ -739,7 +750,7 @@ function bindEvents() {
     const f=e.target;
     const data={ exercise:f.exercise.value.trim(), weight:parseFloat(f.weight.value), reps:parseInt(f.reps.value), sets:parseInt(f.sets.value), date:f.date.value };
     state.workouts.unshift({id:'temp-'+Date.now(), user:state.user, ...data});
-    f.reset(); f.date.value=new Date().toISOString().slice(0,10);
+    f.reset(); f.date.value=localDateStr();
     render();
     await saveWorkout(state.user, data);
     state.workouts=await loadWorkouts(); render();
@@ -804,7 +815,7 @@ function bindEvents() {
   // 精算する（立て替えの貸し借りをまとめて解消）
   document.getElementById('btn-settle')?.addEventListener('click', async ()=>{
     const btn = document.getElementById('btn-settle');
-    const data = { kind:'settle', category:'', amount: parseFloat(btn.dataset.amount)||0, memo:'精算', date:new Date().toISOString().slice(0,10), payee: btn.dataset.owed };
+    const data = { kind:'settle', category:'', amount: parseFloat(btn.dataset.amount)||0, memo:'精算', date:localDateStr(), payee: btn.dataset.owed };
     const payer = btn.dataset.ower;
     btn.textContent='✓ 精算しました'; btn.disabled=true;
     state.money.unshift({id:'temp-'+Date.now(), user:payer, ...data});
