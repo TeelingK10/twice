@@ -1,0 +1,486 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Nunito','Segoe UI',sans-serif;background:#eaf4fc;color:#1e293b;min-height:100vh;}
+h1,h2,h3,.app-title,.hero h1,.wiki-hero h1,.fc-title,.stat-val,.cal-sum-val,.money-amount,.shop-name{font-family:'Baloo 2','Nunito',sans-serif;}
+button{font-family:inherit;}
+
+/* ========================================
+   LOGIN
+======================================== */
+.login-screen{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:linear-gradient(160deg,#eaf6ff 0%,#f7fbff 50%,#eef2ff 100%);
+  position:relative;overflow:hidden;
+}
+.blob{
+  position:absolute;border-radius:50%;filter:blur(50px);opacity:0.55;
+  animation:blob-float 16s ease-in-out infinite;pointer-events:none;
+}
+.blob-orange{width:340px;height:340px;background:#fb923c;top:-80px;left:-60px;animation-duration:18s;}
+.blob-purple{width:380px;height:380px;background:#c084fc;bottom:-100px;right:-80px;animation-duration:22s;animation-delay:-4s;}
+.blob-blue{width:300px;height:300px;background:#7dd3fc;top:30%;right:-100px;animation-duration:20s;animation-delay:-9s;}
+.blob-pink{width:260px;height:260px;background:#f9a8d4;bottom:10%;left:-60px;animation-duration:24s;animation-delay:-14s;}
+@keyframes blob-float{
+  0%,100%{transform:translate(0,0) scale(1);}
+  25%{transform:translate(30px,-40px) scale(1.08);}
+  50%{transform:translate(-20px,30px) scale(0.95);}
+  75%{transform:translate(40px,20px) scale(1.05);}
+}
+@media (prefers-reduced-motion: reduce){
+  .blob{animation:none;}
+}
+.login-box{
+  width:100%;max-width:400px;background:rgba(255,255,255,0.7);backdrop-filter:blur(20px);
+  border-radius:36px;padding:50px 40px;border:1px solid rgba(255,255,255,0.8);
+  box-shadow:0 20px 60px rgba(56,189,248,0.18);position:relative;z-index:1;
+}
+.app-title{font-size:52px;font-weight:800;letter-spacing:4px;text-align:center;margin-bottom:6px;
+  background:linear-gradient(90deg,#fb923c,#fbbf24,#c084fc);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.app-sub{text-align:center;color:#fbbf24;letter-spacing:4px;font-size:12px;margin-bottom:36px;font-weight:700;}
+.user-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+.user-btn{
+  padding:22px;border:2px solid transparent;border-radius:24px;cursor:pointer;
+  font-size:15px;font-weight:800;letter-spacing:2px;transition:0.2s;text-align:center;background:none;
+}
+.user-btn.kaito{background:rgba(249,115,22,0.18);color:#fb923c;border-color:#fb923c;}
+.user-btn.kaito:hover{background:#fdba74;color:white;transform:translateY(-3px) scale(1.03);box-shadow:0 8px 18px rgba(251,146,60,0.3);}
+.user-btn.nana{background:rgba(168,85,247,0.18);color:#c084fc;border-color:#c084fc;}
+.user-btn.nana:hover{background:#d8b4fe;color:white;transform:translateY(-3px) scale(1.03);box-shadow:0 8px 18px rgba(192,132,252,0.3);}
+.user-avatar{font-size:38px;margin-bottom:8px;}
+.login-hint{text-align:center;color:#64748b;font-size:12px;letter-spacing:1px;}
+.status-badge{border-radius:16px;padding:12px 16px;margin-bottom:20px;font-size:12px;line-height:1.6;font-weight:600;}
+.status-badge.demo{background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.3);color:#fb923c;}
+.status-badge.connected{background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.35);color:#4ade80;}
+
+/* ========================================
+   LAYOUT
+======================================== */
+.app-layout{display:flex;min-height:100vh;}
+.sidebar{
+  width:220px;background:#ffffff;border-right:1px solid #d6eaf8;box-shadow:2px 0 12px rgba(56,189,248,0.08);
+  padding:28px 18px;display:flex;flex-direction:column;gap:6px;
+  position:fixed;height:100vh;overflow-y:auto;z-index:100;transition:transform 0.3s;
+}
+.sidebar-user{padding:14px 16px;border-radius:18px;margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+.sidebar-user.kaito{background:rgba(249,115,22,0.18);border:1px solid rgba(249,115,22,0.35);}
+.sidebar-user.nana{background:rgba(168,85,247,0.18);border:1px solid rgba(168,85,247,0.35);}
+.sidebar-user .av{font-size:24px;}
+.sidebar-user .uname{font-size:13px;font-weight:800;letter-spacing:1px;}
+.sidebar-user.kaito .uname{color:#fb923c;}
+.sidebar-user.nana .uname{color:#c084fc;}
+.nav-btn{
+  padding:13px 16px;border-radius:16px;border:none;background:transparent;
+  color:#5b7a99;cursor:pointer;font-size:14px;font-weight:700;text-align:left;width:100%;transition:0.2s;
+}
+.nav-btn:hover{background:#e0f2fe;color:#0c4a6e;transform:translateX(2px);}
+.nav-btn.active-orange{background:rgba(249,115,22,0.22);color:#fb923c;box-shadow:0 4px 14px rgba(249,115,22,0.18);}
+.nav-btn.active-purple{background:rgba(168,85,247,0.22);color:#c084fc;box-shadow:0 4px 14px rgba(168,85,247,0.18);}
+.nav-btn.active-green{background:rgba(34,197,94,0.22);color:#4ade80;box-shadow:0 4px 14px rgba(34,197,94,0.18);}
+.nav-btn.active-blue{background:rgba(56,189,248,0.22);color:#38bdf8;box-shadow:0 4px 14px rgba(56,189,248,0.18);}
+.logout-btn{margin-top:auto;padding:13px;border-radius:16px;border:none;background:#f87171;color:white;cursor:pointer;font-size:13px;font-weight:700;width:100%;transition:0.2s;}
+.logout-btn:hover{background:#ef4444;transform:translateY(-2px);}
+.main{margin-left:220px;padding:32px;width:calc(100% - 220px);}
+
+/* ========================================
+   HERO
+======================================== */
+.hero{border-radius:28px;padding:40px 44px;margin-bottom:24px;position:relative;overflow:hidden;}
+.hero.kaito{background:linear-gradient(135deg,#fff7ed 0%,#ffedd5 100%);border:1px solid rgba(251,146,60,0.35);box-shadow:0 10px 28px rgba(251,146,60,0.10);}
+.hero.nana{background:linear-gradient(135deg,#faf5ff 0%,#f3e8ff 100%);border:1px solid rgba(192,132,252,0.35);box-shadow:0 10px 28px rgba(192,132,252,0.10);}
+.hero-tag{font-size:11px;letter-spacing:5px;margin-bottom:8px;font-weight:800;}
+.hero.kaito .hero-tag{color:#ea580c;}
+.hero.nana .hero-tag{color:#9333ea;}
+.hero h1{font-size:42px;font-weight:800;margin-bottom:6px;}
+.hero-sub{color:#64748b;font-size:14px;font-weight:600;}
+
+/* ========================================
+   STATS
+======================================== */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:24px;}
+.stat-card{background:#ffffff;border-radius:22px;padding:22px;border:1px solid #d6eaf8;transition:0.2s;box-shadow:0 4px 16px rgba(56,189,248,0.08);}
+.stat-card:hover{transform:translateY(-2px);border-color:#473659;}
+.stat-label{font-size:11px;letter-spacing:3px;color:#5b7a99;margin-bottom:8px;font-weight:700;}
+.stat-val{font-size:32px;font-weight:800;}
+.stat-val.orange{color:#fb923c;}
+.stat-val.purple{color:#c084fc;}
+
+/* ========================================
+   SECTION
+======================================== */
+.section{background:#ffffff;border-radius:26px;padding:24px;margin-bottom:20px;border:1px solid #d6eaf8;box-shadow:0 4px 16px rgba(56,189,248,0.06);}
+.section-title{font-size:13px;letter-spacing:3px;margin-bottom:18px;font-weight:800;}
+.section-title.orange{color:#fb923c;}
+.section-title.purple{color:#c084fc;}
+
+/* ========================================
+   FORM
+======================================== */
+.add-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;}
+.add-form input, .add-form select{
+  padding:12px;border:1px solid #d6eaf8;border-radius:14px;
+  background:#eef7fd;color:#1e293b;font-size:15px;width:100%;font-weight:600;
+}
+.add-form input:focus, .add-form select:focus{outline:none;border-color:#fb923c;box-shadow:0 0 0 3px rgba(249,115,22,0.15);}
+.add-form input.pf:focus{border-color:#c084fc;box-shadow:0 0 0 3px rgba(168,85,247,0.15);}
+.submit-btn{padding:12px;border:none;border-radius:14px;color:white;font-size:15px;cursor:pointer;font-weight:800;transition:0.2s;}
+.submit-btn.orange{background:linear-gradient(135deg,#fdba74,#fb923c);}
+.submit-btn.orange:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 6px 16px rgba(251,146,60,0.28);}
+.submit-btn.purple{background:linear-gradient(135deg,#d8b4fe,#c084fc);}
+.submit-btn.purple:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 6px 16px rgba(192,132,252,0.28);}
+
+/* ========================================
+   WORKOUT CARDS
+======================================== */
+.workout-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;}
+.workout-card{background:#ffffff;border:1px solid #d6eaf8;border-radius:20px;padding:18px;transition:0.2s;position:relative;box-shadow:0 2px 10px rgba(56,189,248,0.06);}
+.workout-card:hover{border-color:#fb923c;transform:translateY(-2px);}
+.workout-card.np:hover{border-color:#c084fc;}
+.wc-name{color:#fb923c;font-size:14px;margin-bottom:12px;font-weight:800;}
+.wc-name.purple{color:#c084fc;}
+.workout-stats{display:flex;justify-content:space-between;}
+.workout-stats>div span{color:#5b7a99;font-size:11px;letter-spacing:1px;display:block;font-weight:700;}
+.workout-stats>div strong{font-size:20px;}
+.workout-date{color:#94a3b8;font-size:11px;margin-top:10px;}
+.pr-badge{position:absolute;top:12px;right:12px;background:#ffedd5;color:#c2410c;font-size:10px;padding:3px 9px;border-radius:20px;font-weight:800;}
+.pr-badge.pp{background:#f3e8ff;color:#9333ea;}
+.del-btn{margin-top:12px;background:#f87171;border:none;color:white;padding:6px 12px;border-radius:14px;font-size:11px;cursor:pointer;font-weight:700;transition:0.2s;}
+.del-btn:hover{background:#ef4444;transform:scale(1.05);}
+
+/* ========================================
+   PR TABLE
+======================================== */
+.pr-table{width:100%;border-collapse:collapse;}
+.pr-table th{text-align:left;color:#6b7280;font-size:11px;letter-spacing:2px;padding:8px 12px;border-bottom:1px solid #d6eaf8;}
+.pr-table td{padding:12px;border-bottom:1px solid #eaf6ff;font-size:14px;}
+.pr-table td.prw{font-size:22px;font-weight:800;color:#fb923c;}
+.pr-table td.prw.purple{color:#c084fc;}
+.pr-table tr:hover td{background:#eaf6ff;}
+
+/* ========================================
+   WEEKLY MENU
+======================================== */
+.day-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.day-tab{padding:7px 16px;border-radius:14px;border:1px solid #d6eaf8;background:#eef7fd;color:#5b7a99;cursor:pointer;font-size:12px;font-weight:700;transition:0.2s;}
+.day-tab:hover{transform:translateY(-1px);}
+.day-tab.ao{background:#fb923c;color:white;border-color:#fb923c;}
+.day-tab.ap{background:#c084fc;color:white;border-color:#c084fc;}
+.menu-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
+.menu-row{
+  display:flex;align-items:center;justify-content:space-between;
+  background:#ffffff;border:1px solid #d6eaf8;border-radius:14px;padding:10px 14px;gap:8px;flex-wrap:wrap;
+}
+.menu-ex{font-size:13px;color:#fb923c;}
+.menu-ex.purple{color:#c084fc;}
+.menu-meta{color:#6b7280;font-size:12px;}
+
+/* ========================================
+   FIREBASE BANNER
+======================================== */
+.firebase-banner{background:#0d1a2e;border:1px solid #1e3a5f;border-radius:16px;padding:20px 24px;margin-bottom:20px;}
+.firebase-banner h3{color:#38bdf8;font-size:13px;letter-spacing:2px;margin-bottom:10px;}
+.firebase-banner p{color:#64748b;font-size:12px;line-height:1.8;}
+.firebase-banner code{background:#0a0f1e;color:#7dd3fc;padding:2px 8px;border-radius:6px;font-size:11px;}
+.firebase-banner a{color:#38bdf8;}
+
+/* ========================================
+   MISC
+======================================== */
+.empty{color:#4b5563;font-style:italic;font-size:13px;padding:10px 0;}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99;}
+.overlay.open{display:block;}
+.hamburger{
+  display:none;position:fixed;top:12px;left:12px;z-index:300;
+  width:42px;height:42px;border-radius:12px;border:1px solid #d6eaf8;background:#ffffff;
+  cursor:pointer;flex-direction:column;align-items:center;justify-content:center;gap:5px;box-shadow:0 4px 12px rgba(56,189,248,0.15);
+}
+.hamburger span{display:block;width:20px;height:2px;background:#fb923c;border-radius:2px;}
+
+/* ========================================
+   MOBILE  ≤ 700px
+======================================== */
+@media(max-width:700px){
+  .hamburger{display:flex;}
+  .sidebar{transform:translateX(-100%);}
+  .sidebar.open{transform:none;}
+  .main{margin-left:0;width:100%;padding:16px;padding-top:64px;}
+  .cards-grid{grid-template-columns:1fr 1fr;}
+  .hero{padding:28px 22px;}
+  .hero h1{font-size:28px;}
+  .add-form{grid-template-columns:1fr;}
+  .workout-grid{grid-template-columns:1fr;}
+}
+
+/* ========================================
+   数字入力 +/- ボタン
+======================================== */
+.num-input-wrap{
+  display:flex;align-items:center;gap:0;
+  border:1px solid #d6eaf8;border-radius:12px;overflow:hidden;
+  background:#eef7fd;
+}
+.num-input-wrap input{
+  flex:1;text-align:center;border:none;border-left:1px solid #d6eaf8;
+  border-right:1px solid #d6eaf8;border-radius:0;min-width:0;
+  background:#eef7fd;color:#1e293b;padding:12px 6px;font-size:16px;
+}
+.num-input-wrap input:focus{outline:none;background:#eaf6ff;}
+.num-btn{
+  width:44px;height:48px;border:none;background:#ffffff;color:#5b7a99;
+  font-size:20px;cursor:pointer;transition:0.2s;flex-shrink:0;
+}
+.num-btn:hover{background:#fb923c;color:white;}
+.num-btn:active{transform:scale(0.95);}
+
+/* ========================================
+   Weekly Menu — 動画リンク
+======================================== */
+.menu-row{flex-wrap:nowrap;align-items:center;}
+.menu-row-left{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;}
+.menu-row-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.video-btn{
+  display:inline-block;background:#f87171;color:white;
+  padding:6px 12px;border-radius:12px;font-size:12px;
+  text-decoration:none;transition:0.2s;white-space:nowrap;
+}
+.video-btn:hover{background:#ef4444;transform:scale(1.05);}
+.video-btn.purple-video{background:#c084fc;}
+.video-btn.purple-video:hover{background:#c084fc;}
+
+@media(max-width:700px){
+  .menu-row{flex-wrap:wrap;}
+  .menu-row-right{width:100%;justify-content:flex-end;}
+}
+
+/* ========================================
+   グラフ — 種目セレクター
+======================================== */
+.ex-select-wrap{
+  display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;
+}
+.ex-sel-btn{
+  padding:5px 12px;border-radius:14px;border:1px solid #d6eaf8;
+  background:#eef7fd;color:#5b7a99;cursor:pointer;font-size:12px;transition:0.2s;
+}
+.ex-sel-btn.active-o{background:#fb923c;color:white;border-color:#fb923c;}
+.ex-sel-btn.active-p{background:#c084fc;color:white;border-color:#c084fc;}
+
+/* ========================================
+   Weekly Menu — ワンタップ記録ボタン
+======================================== */
+.quick-add-btn{
+  padding:6px 12px;border-radius:12px;border:none;
+  background:#fb923c;color:white;font-size:12px;
+  cursor:pointer;transition:0.2s;white-space:nowrap;font-weight:600;
+}
+.quick-add-btn:hover{background:#fb923c;transform:scale(1.05);}
+.quick-add-btn.purple-quick{background:#c084fc;}
+.quick-add-btn.purple-quick:hover{background:#c084fc;}
+.quick-add-btn:disabled{background:#94a3b8;cursor:default;}
+
+/* ========================================
+   CALENDAR
+======================================== */
+.cal-nav{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:16px;
+}
+.cal-nav-btn{
+  background:#38bdf8;border:none;color:white;padding:8px 14px;
+  border-radius:14px;cursor:pointer;font-size:14px;transition:0.2s;
+}
+.cal-nav-btn:hover{background:#fb923c;transform:scale(1.08);}
+.cal-month-label{font-size:16px;font-weight:700;letter-spacing:2px;}
+
+.cal-header{
+  display:grid;grid-template-columns:repeat(7,1fr);
+  margin-bottom:6px;
+}
+.cal-head-cell{
+  text-align:center;font-size:11px;letter-spacing:1px;
+  color:#6b7280;padding:6px 0;
+}
+.cal-head-cell.cal-sun{color:#ef4444;}
+.cal-head-cell.cal-sat{color:#60a5fa;}
+
+.cal-grid{
+  display:grid;grid-template-columns:repeat(7,1fr);
+  gap:4px;margin-bottom:20px;
+}
+.cal-cell{
+  aspect-ratio:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;border-radius:14px;font-size:13px;cursor:pointer;
+  position:relative;border:1px solid transparent;transition:0.2s;color:#5b7a99;
+}
+.cal-cell:hover{background:#bfe6fb;color:#0c4a6e;}
+.cal-cell.empty{cursor:default;}
+.cal-cell.empty:hover{background:transparent;}
+.cal-cell.cal-today{border-color:#38bdf8;color:#0c4a6e;font-weight:700;}
+.cal-cell.cal-sel{border-color:#fb923c;background:rgba(249,115,22,0.1);}
+.cal-cell.trained-o{background:rgba(249,115,22,0.2);color:#fb923c;font-weight:700;}
+.cal-cell.trained-p{background:rgba(168,85,247,0.2);color:#c084fc;font-weight:700;}
+.cal-cell.cal-sun{color:#ef4444;}
+.cal-cell.cal-sat{color:#60a5fa;}
+.cal-cell.trained-o.cal-sun,
+.cal-cell.trained-o.cal-sat,
+.cal-cell.trained-p.cal-sun,
+.cal-cell.trained-p.cal-sat{color:inherit;}
+
+.cal-dot{
+  position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
+  width:4px;height:4px;border-radius:50%;background:currentColor;
+}
+
+/* カレンダー サマリー */
+.cal-summary{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:10px;margin-bottom:20px;
+}
+.cal-sum-item{
+  background:#eef7fd;border:1px solid #d6eaf8;border-radius:14px;
+  padding:14px;text-align:center;
+}
+.cal-sum-label{font-size:10px;letter-spacing:2px;color:#6b7280;margin-bottom:6px;}
+.cal-sum-val{font-size:22px;font-weight:800;}
+
+/* カレンダー 詳細 */
+.cal-detail{
+  background:#eef7fd;border:1px solid #d6eaf8;border-radius:14px;padding:16px;
+}
+.cal-detail-date{
+  font-size:12px;letter-spacing:2px;color:#6b7280;margin-bottom:12px;
+}
+.cal-workout-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 0;border-bottom:1px solid #eaf6ff;gap:8px;flex-wrap:wrap;
+}
+.cal-workout-row:last-child{border-bottom:none;}
+.purple-text{color:#c084fc;}
+
+@media(max-width:700px){
+  .cal-summary{grid-template-columns:repeat(3,1fr);}
+  .cal-cell{font-size:11px;border-radius:12px;}
+  .cal-sum-val{font-size:18px;}
+}
+
+/* ========================================
+   HOME / WIKI TOP
+======================================== */
+.wiki-hero{
+  border-radius:30px;padding:48px 44px;margin-bottom:24px;
+  background:linear-gradient(135deg,#fdf2f8 0%,#fff7ed 50%,#f5f3ff 100%);
+  border:1px solid rgba(56,189,248,0.15);position:relative;overflow:hidden;
+}
+.wiki-hero::after{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 12% 18%,rgba(251,146,60,0.16),transparent 42%),
+             radial-gradient(circle at 88% 82%,rgba(192,132,252,0.16),transparent 42%),
+             radial-gradient(circle at 50% 50%,rgba(251,191,36,0.06),transparent 60%);
+  pointer-events:none;
+}
+.wiki-hero-tag{font-size:12px;letter-spacing:5px;color:#d97706;margin-bottom:10px;position:relative;font-weight:800;}
+.wiki-hero h1{font-size:42px;font-weight:800;margin-bottom:8px;position:relative;
+  background:linear-gradient(90deg,#ea580c,#d97706,#9333ea);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.wiki-hero-sub{color:#64748b;font-size:14px;position:relative;font-weight:600;}
+
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:24px;}
+.feature-card{
+  background:#ffffff;border:1px solid #d6eaf8;border-radius:26px;padding:26px;cursor:pointer;
+  transition:0.2s cubic-bezier(.34,1.56,.64,1);text-align:left;position:relative;overflow:hidden;
+}
+.feature-card:hover{transform:translateY(-5px) scale(1.02);border-color:#38bdf8;box-shadow:0 14px 32px rgba(56,189,248,0.18);}
+.feature-card .fc-icon{font-size:34px;margin-bottom:14px;display:block;}
+.feature-card .fc-title{font-size:17px;font-weight:800;letter-spacing:1px;margin-bottom:6px;}
+.feature-card .fc-sub{color:#5b7a99;font-size:12px;line-height:1.6;font-weight:600;}
+.feature-card .fc-bar{position:absolute;top:0;left:0;right:0;height:4px;border-radius:0 0 8px 8px;}
+.feature-card.fc-gym-k .fc-bar{background:linear-gradient(90deg,#fb923c,#fbbf24);}
+.feature-card.fc-gym-n .fc-bar{background:linear-gradient(90deg,#c084fc,#f0abfc);}
+.feature-card.fc-money .fc-bar{background:linear-gradient(90deg,#4ade80,#4ade80);}
+.feature-card.fc-shops .fc-bar{background:linear-gradient(90deg,#38bdf8,#7dd3fc);}
+.feature-card .fc-stat{font-size:22px;font-weight:800;margin-top:12px;}
+.feature-card.fc-money .fc-stat{color:#4ade80;}
+.feature-card.fc-shops .fc-stat{color:#38bdf8;}
+
+/* トップへ戻る簡易ナビ */
+.subnav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+.subnav-btn{
+  padding:10px 18px;border-radius:16px;border:1px solid #d6eaf8;background:#ffffff;
+  color:#5b7a99;font-size:13px;cursor:pointer;transition:0.2s;font-weight:700;
+}
+.subnav-btn:hover{background:#e0f2fe;color:#0c4a6e;}
+.subnav-btn.active{color:#0c4a6e;}
+.subnav-btn.active.acc-orange{background:rgba(249,115,22,0.22);border-color:#fb923c;color:#fb923c;}
+.subnav-btn.active.acc-purple{background:rgba(168,85,247,0.22);border-color:#c084fc;color:#c084fc;}
+.subnav-btn.active.acc-green{background:rgba(34,197,94,0.22);border-color:#4ade80;color:#4ade80;}
+.subnav-btn.active.acc-blue{background:rgba(56,189,248,0.22);border-color:#38bdf8;color:#38bdf8;}
+
+/* ========================================
+   MONEY (共有の財布)
+======================================== */
+.money-stat-income{color:#16a34a !important;}
+.money-stat-expense{color:#ef4444 !important;}
+.money-stat-balance{color:#0ea5e9 !important;}
+
+.wallet-balance-card{
+  background:linear-gradient(135deg,#ecfdf5 0%,#d1fae5 100%);
+  border:1px solid rgba(74,222,128,0.4);border-radius:26px;
+  padding:30px 34px;margin-bottom:20px;text-align:center;
+  box-shadow:0 10px 28px rgba(74,222,128,0.10);
+}
+.wallet-balance-label{font-size:12px;letter-spacing:3px;color:#15803d;font-weight:800;margin-bottom:8px;}
+.wallet-balance-val{font-size:44px;font-weight:800;color:#16a34a;font-family:'Baloo 2',sans-serif;}
+
+.settle-card{
+  background:#ffffff;border:1px solid #fb923c;border-radius:22px;
+  padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;
+  gap:16px;flex-wrap:wrap;
+}
+.settle-card.settle-zero{border-color:#4ade80;background:#f0fdf4;}
+.settle-text{font-size:14px;color:#334155;font-weight:600;}
+.settle-text strong{font-size:18px;color:#fbbf24;}
+.settle-zero-text{font-size:14px;color:#16a34a;font-weight:700;}
+
+.money-hint{font-size:11.5px;color:#6b7280;margin-top:12px;line-height:1.7;}
+
+.type-toggle{display:flex;gap:8px;grid-column:1 / -1;flex-wrap:wrap;}
+.type-toggle label{
+  flex:1;min-width:120px;text-align:center;padding:12px 8px;border-radius:14px;border:1px solid #d6eaf8;
+  background:#eef7fd;color:#5b7a99;cursor:pointer;font-size:13px;font-weight:700;transition:0.2s;
+}
+.type-toggle input{display:none;}
+.type-toggle label.kind-deposit-label:has(input:checked){background:rgba(34,197,94,0.18);border-color:#4ade80;color:#4ade80;}
+.type-toggle label.kind-expense-label:has(input:checked){background:rgba(248,113,113,0.18);border-color:#f87171;color:#f87171;}
+.type-toggle label.kind-tatekae-label:has(input:checked){background:rgba(251,191,36,0.18);border-color:#fbbf24;color:#fbbf24;}
+
+.money-table{width:100%;border-collapse:collapse;}
+.money-table th{text-align:left;color:#6b7280;font-size:11px;letter-spacing:2px;padding:8px 10px;border-bottom:1px solid #d6eaf8;}
+.money-table td{padding:11px 10px;border-bottom:1px solid #eaf6ff;font-size:13px;vertical-align:middle;}
+.money-table tr:hover td{background:#eaf6ff;}
+.money-amount{font-weight:800;font-size:15px;color:#1e293b;}
+.money-cat-pill{
+  display:inline-block;background:#eef7fd;border:1px solid #d6eaf8;color:#5b7a99;
+  font-size:11px;padding:3px 10px;border-radius:20px;margin-bottom:2px;
+}
+.money-who{font-size:11px;color:#6b7280;font-weight:700;}
+.money-who.kaito{color:#fb923c;}
+.money-who.nana{color:#c084fc;}
+.del-icon-btn{background:#f87171;border:none;color:white;width:26px;height:26px;border-radius:12px;cursor:pointer;font-size:12px;line-height:1;}
+.del-icon-btn:hover{background:#ef4444;}
+
+/* ========================================
+   SHOPS (お店リスト)
+======================================== */
+.shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+.shop-card{background:#ffffff;border:1px solid #d6eaf8;border-radius:16px;padding:18px;transition:0.2s;position:relative;box-shadow:0 2px 10px rgba(56,189,248,0.06);}
+.shop-card:hover{border-color:#38bdf8;}
+.shop-name{font-size:15px;font-weight:700;color:#38bdf8;margin-bottom:6px;padding-right:60px;}
+.shop-cat{display:inline-block;background:rgba(56,189,248,0.12);color:#38bdf8;font-size:11px;padding:3px 10px;border-radius:20px;margin-bottom:8px;}
+.shop-area{color:#6b7280;font-size:12px;margin-bottom:8px;}
+.shop-rating{color:#fbbf24;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+.shop-comment{color:#5b7a99;font-size:12.5px;line-height:1.6;margin-bottom:10px;}
+.shop-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.shop-by{font-size:10px;color:#4b5563;}
+.shop-link{
+  display:inline-block;background:#38bdf8;color:#ffffff;font-weight:700;
+  padding:6px 12px;border-radius:12px;font-size:11px;text-decoration:none;
+}
+.shop-link:hover{background:#0ea5e9;}
