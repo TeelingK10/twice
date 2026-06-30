@@ -89,18 +89,35 @@ async function removeMenu(id) { await gasPost({ action: 'deleteMenu', id }); }
 async function loadMoney() {
   const res = await gasGet({ action: 'getMoney' });
   if (!res.ok) return state.money;
-  return res.rows.map(r => ({
-    id:       String(r.id).trim(),
-    user:     String(r.user||'').trim(),
-    kind:     String(r.kind||'').trim(),       // スペース混入で'deposit'と一致しなくなるのを防ぐ
-    category: String(r.category||'').trim(),
-    amount:   parseFloat(String(r.amount).replace(/[^0-9.\-]/g,'')) || 0,
-    memo:     String(r.memo||'').trim(),
-    date:     String(r.date||'').trim(),
-    payee:    String(r.payee||'').trim(),
-  })).sort((a,b) => (b.date||'').localeCompare(a.date||'') || b.id - a.id);
+  return res.rows.map(r => {
+    // 旧スキーマ(type)と新スキーマ(kind)どちらにも対応
+    const rawKind = String(r.kind || r.type || '').trim();
+    // 旧スキーマの値を新スキーマに変換
+    const kindMap = { income: 'deposit', expense: 'wallet_expense' };
+    const kind = kindMap[rawKind] || rawKind;
+    // 日付: Date型(スプレッドシートが自動変換)またはISO文字列どちらにも対応
+    let date = r.date || '';
+    if (date instanceof Date || (typeof date === 'object' && date !== null)) {
+      date = date.toISOString().slice(0,10);
+    } else {
+      date = String(date).trim().slice(0,10); // タイムスタンプ付きを10文字に切る
+    }
+    return {
+      id:       String(r.id).trim(),
+      user:     String(r.user||'').trim(),
+      kind,
+      category: String(r.category||'').trim(),
+      amount:   parseFloat(String(r.amount).replace(/[^0-9.\-]/g,'')) || 0,
+      memo:     String(r.memo||'').trim(),
+      date,
+      payee:    String(r.payee||'').trim(),
+    };
+  }).sort((a,b) => (b.date||'').localeCompare(a.date||'') || b.id - a.id);
 }
-async function saveMoney(user, data) { await gasPost({ action: 'addMoney', data: JSON.stringify({ user, ...data }) }); }
+async function saveMoney(user, data) {
+  // 旧Code.gs(data.type)と新Code.gs(data.kind)どちらでも動くよう両方送る
+  await gasPost({ action: 'addMoney', data: JSON.stringify({ user, ...data, type: data.kind }) });
+}
 async function removeMoney(id) { await gasPost({ action: 'deleteMoney', id }); }
 
 async function loadShops() {
@@ -456,8 +473,8 @@ function gymHTML(gymUser) {
 function walletName(u) { return u==='kaito' ? 'かいと' : 'なな'; }
 
 function computeWallet(money) {
-  const deposit = money.filter(m=>m.kind==='deposit').reduce((s,m)=>s+m.amount,0);
-  const expense = money.filter(m=>m.kind==='wallet_expense').reduce((s,m)=>s+m.amount,0);
+  const deposit = money.filter(m => m.kind==='deposit' || m.kind==='income').reduce((s,m)=>s+m.amount,0);
+  const expense = money.filter(m => m.kind==='wallet_expense' || m.kind==='expense').reduce((s,m)=>s+m.amount,0);
   return { balance: deposit - expense, deposit, expense };
 }
 
@@ -480,22 +497,9 @@ function moneyHTML(u, isK, ac) {
   const imbalance = computeImbalance(state.money);
   const thisMonth = localMonthStr();
   const monthMoney = state.money.filter(m => (m.date||'').startsWith(thisMonth));
-  const monthDeposit = monthMoney.filter(m=>m.kind==='deposit').reduce((s,m)=>s+m.amount,0);
-  const monthExpense = monthMoney.filter(m=>m.kind==='wallet_expense').reduce((s,m)=>s+m.amount,0);
+  const monthDeposit = monthMoney.filter(m=>m.kind==='deposit'||m.kind==='income').reduce((s,m)=>s+m.amount,0);
+  const monthExpense = monthMoney.filter(m=>m.kind==='wallet_expense'||m.kind==='expense').reduce((s,m)=>s+m.amount,0);
   const today = localDateStr();
-
-  // ▼ デバッグ：最初の1件の生データを表示（原因特定後に削除）
-  const debugRow = state.money[0];
-  const debugInfo = debugRow
-    ? `<div style="background:#fef9c3;border:1px solid #fde047;border-radius:12px;padding:12px;margin-bottom:16px;font-size:12px;word-break:break-all;">
-        🔍 最新レコード確認:<br>
-        kind="<strong>${JSON.stringify(debugRow.kind)}</strong>"<br>
-        amount="<strong>${JSON.stringify(debugRow.amount)}</strong>"<br>
-        date="<strong>${JSON.stringify(debugRow.date)}</strong>"<br>
-        thisMonth="<strong>${thisMonth}</strong>"<br>
-        date.startsWith(thisMonth)=<strong>${(debugRow.date||'').startsWith(thisMonth)}</strong>
-      </div>`
-    : '<div style="background:#fef9c3;padding:12px;border-radius:12px;margin-bottom:16px;">state.money が空です</div>';
 
   const owerUser  = imbalance > 0 ? 'nana' : 'kaito';
   const owedUser  = imbalance > 0 ? 'kaito' : 'nana';
@@ -512,8 +516,6 @@ function moneyHTML(u, isK, ac) {
       <h1>💰 共有の財布</h1>
       <div class="hero-sub">ふたりのお財布＋立て替え精算（共有データ）</div>
     </div>
-
-    ${debugInfo}
 
     <div class="wallet-balance-card">
       <div class="wallet-balance-label">財布の残高</div>
