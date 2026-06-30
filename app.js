@@ -61,9 +61,13 @@ async function loadWorkouts() {
   const res = await gasGet({ action: 'getWorkouts' });
   if (!res.ok) return state.workouts;
   return res.rows.map(r => ({
-    id: String(r.id), user: r.user, exercise: r.exercise,
-    weight: parseFloat(r.weight), reps: parseInt(r.reps),
-    sets: parseInt(r.sets), date: r.date,
+    id:       String(r.id).trim(),
+    user:     String(r.user||'').trim(),
+    exercise: String(r.exercise||'').trim(),
+    weight:   parseFloat(r.weight) || 0,
+    reps:     parseInt(r.reps) || 0,
+    sets:     parseInt(r.sets) || 0,
+    date:     String(r.date||'').trim(),
   })).sort((a,b) => b.id - a.id);
 }
 async function saveWorkout(user, data) { await gasPost({ action: 'addWorkout', data: JSON.stringify({ user, ...data }) }); }
@@ -86,9 +90,14 @@ async function loadMoney() {
   const res = await gasGet({ action: 'getMoney' });
   if (!res.ok) return state.money;
   return res.rows.map(r => ({
-    id: String(r.id), user: r.user, kind: r.kind, category: r.category,
-    amount: parseFloat(r.amount) || 0, memo: r.memo || '', date: r.date,
-    payee: r.payee || '',
+    id:       String(r.id).trim(),
+    user:     String(r.user||'').trim(),
+    kind:     String(r.kind||'').trim(),       // スペース混入で'deposit'と一致しなくなるのを防ぐ
+    category: String(r.category||'').trim(),
+    amount:   parseFloat(String(r.amount).replace(/[^0-9.\-]/g,'')) || 0,
+    memo:     String(r.memo||'').trim(),
+    date:     String(r.date||'').trim(),
+    payee:    String(r.payee||'').trim(),
   })).sort((a,b) => (b.date||'').localeCompare(a.date||'') || b.id - a.id);
 }
 async function saveMoney(user, data) { await gasPost({ action: 'addMoney', data: JSON.stringify({ user, ...data }) }); }
