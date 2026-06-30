@@ -60,15 +60,20 @@ async function gasPost(params) {
 async function loadWorkouts() {
   const res = await gasGet({ action: 'getWorkouts' });
   if (!res.ok) return state.workouts;
-  return res.rows.map(r => ({
-    id:       String(r.id).trim(),
-    user:     String(r.user||'').trim(),
-    exercise: String(r.exercise||'').trim(),
-    weight:   parseFloat(r.weight) || 0,
-    reps:     parseInt(r.reps) || 0,
-    sets:     parseInt(r.sets) || 0,
-    date:     String(r.date||'').trim(),
-  })).sort((a,b) => b.id - a.id);
+  return res.rows.map(r => {
+    let date = String(r.date || '').trim();
+    if (date.includes('T') || date.includes('Z')) date = localDateStr(new Date(date));
+    else date = date.slice(0, 10);
+    return {
+      id:       String(r.id).trim(),
+      user:     String(r.user||'').trim(),
+      exercise: String(r.exercise||'').trim(),
+      weight:   parseFloat(r.weight) || 0,
+      reps:     parseInt(r.reps) || 0,
+      sets:     parseInt(r.sets) || 0,
+      date,
+    };
+  }).sort((a,b) => b.id - a.id);
 }
 async function saveWorkout(user, data) { await gasPost({ action: 'addWorkout', data: JSON.stringify({ user, ...data }) }); }
 async function removeWorkout(id) { await gasPost({ action: 'deleteWorkout', id }); }
@@ -92,16 +97,19 @@ async function loadMoney() {
   return res.rows.map(r => {
     // 旧スキーマ(type)と新スキーマ(kind)どちらにも対応
     const rawKind = String(r.kind || r.type || '').trim();
-    // 旧スキーマの値を新スキーマに変換
     const kindMap = { income: 'deposit', expense: 'wallet_expense' };
     const kind = kindMap[rawKind] || rawKind;
-    // 日付: Date型(スプレッドシートが自動変換)またはISO文字列どちらにも対応
-    let date = r.date || '';
-    if (date instanceof Date || (typeof date === 'object' && date !== null)) {
-      date = date.toISOString().slice(0,10);
+
+    // 日付: スプレッドシートが自動変換した場合 "2026-06-30T15:00:00.000Z"(UTC)で返ってくる
+    // そのまま slice(0,10) すると JST より1日前の日付になるので、
+    // ローカルタイムゾーン(JST)で正しい日付文字列に変換する
+    let date = String(r.date || '').trim();
+    if (date.includes('T') || date.includes('Z')) {
+      date = localDateStr(new Date(date)); // JSTで正しい日付に変換
     } else {
-      date = String(date).trim().slice(0,10); // タイムスタンプ付きを10文字に切る
+      date = date.slice(0, 10);
     }
+
     return {
       id:       String(r.id).trim(),
       user:     String(r.user||'').trim(),
