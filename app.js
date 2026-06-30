@@ -484,6 +484,19 @@ function moneyHTML(u, isK, ac) {
   const monthExpense = monthMoney.filter(m=>m.kind==='wallet_expense').reduce((s,m)=>s+m.amount,0);
   const today = localDateStr();
 
+  // ▼ デバッグ：最初の1件の生データを表示（原因特定後に削除）
+  const debugRow = state.money[0];
+  const debugInfo = debugRow
+    ? `<div style="background:#fef9c3;border:1px solid #fde047;border-radius:12px;padding:12px;margin-bottom:16px;font-size:12px;word-break:break-all;">
+        🔍 最新レコード確認:<br>
+        kind="<strong>${JSON.stringify(debugRow.kind)}</strong>"<br>
+        amount="<strong>${JSON.stringify(debugRow.amount)}</strong>"<br>
+        date="<strong>${JSON.stringify(debugRow.date)}</strong>"<br>
+        thisMonth="<strong>${thisMonth}</strong>"<br>
+        date.startsWith(thisMonth)=<strong>${(debugRow.date||'').startsWith(thisMonth)}</strong>
+      </div>`
+    : '<div style="background:#fef9c3;padding:12px;border-radius:12px;margin-bottom:16px;">state.money が空です</div>';
+
   const owerUser  = imbalance > 0 ? 'nana' : 'kaito';
   const owedUser  = imbalance > 0 ? 'kaito' : 'nana';
   const owedAmount = Math.abs(Math.round(imbalance));
@@ -499,6 +512,8 @@ function moneyHTML(u, isK, ac) {
       <h1>💰 共有の財布</h1>
       <div class="hero-sub">ふたりのお財布＋立て替え精算（共有データ）</div>
     </div>
+
+    ${debugInfo}
 
     <div class="wallet-balance-card">
       <div class="wallet-balance-label">財布の残高</div>
