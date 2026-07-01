@@ -16,6 +16,8 @@ const state = {
   shops:       [],
   activeDay:   todayIndex(),
   selectedEx:  null,
+  editMoneyId: null,  // 編集中の履歴ID
+  shopStatus:  'all', // shops filter: 'all' | 'want' | 'went'
   calYear:     new Date().getFullYear(),
   calMonth:    new Date().getMonth(),
   calSelected: null,
@@ -135,10 +137,18 @@ async function loadShops() {
     id: String(r.id), user: r.user, name: r.name, category: r.category,
     area: r.area || '', rating: parseFloat(r.rating) || 0,
     comment: r.comment || '', url: r.url || '',
+    status: r.status || 'want',  // 'want'=行きたい / 'went'=行った
   })).sort((a,b) => b.rating - a.rating || b.id - a.id);
 }
 async function saveShop(user, data) { await gasPost({ action: 'addShop', data: JSON.stringify({ user, ...data }) }); }
 async function removeShop(id) { await gasPost({ action: 'deleteShop', id }); }
+async function updateShopStatus(id, status) {
+  // ステータス更新: 削除して新しいデータで再追加
+  const shop = state.shops.find(s=>s.id===id);
+  if (!shop) return;
+  await removeShop(id);
+  await saveShop(shop.user, { ...shop, id: undefined, status });
+}
 
 async function loadAll() {
   const [workouts, menus, money, shops] = await Promise.all([
@@ -553,7 +563,7 @@ function moneyHTML(u, isK, ac) {
         <select name="category" class="money-cat-select">
           ${WALLET_CATS.map(c=>`<option value="${c}">${c}</option>`).join('')}
         </select>
-        ${numInput('amount','金額 ¥','',100,isK)}
+        ${numInput('amount','金額 ¥','',1,isK)}
         <input name="memo" placeholder="メモ（任意）" class="${!isK?'pf':''}">
         <input name="date" type="date" value="${today}" required class="${!isK?'pf':''}">
         <button type="submit" class="submit-btn ${ac}">+ 追加</button>
@@ -567,14 +577,34 @@ function moneyHTML(u, isK, ac) {
       <table class="money-table">
         <thead><tr><th>日付</th><th>区分</th><th>メモ</th><th>金額</th><th></th></tr></thead>
         <tbody>
-          ${all.map(m=>`
-            <tr>
-              <td style="color:#8b8398;">${m.date||''}<br><span class="money-who ${m.user}">${walletName(m.user)}</span>${m.kind==='settle'?` → <span class="money-who ${m.payee}">${walletName(m.payee)}</span>`:''}</td>
-              <td><span class="money-cat-pill">${kindLabel[m.kind]||m.kind}</span>${m.category?` <span class="money-cat-pill">${escapeHtml(m.category)}</span>`:''}</td>
-              <td style="color:#9ca3af;">${escapeHtml(m.memo)}</td>
-              <td class="money-amount ${kindColor[m.kind]}">¥${yen(m.amount)}</td>
-              <td><button class="del-icon-btn" data-del-money="${m.id}">✕</button></td>
-            </tr>`).join('')}
+          ${all.map(m=>{
+            const isEditing = state.editMoneyId === m.id;
+            if(isEditing) return `
+              <tr class="money-edit-row">
+                <td colspan="5">
+                  <form class="money-edit-form" data-edit-id="${m.id}">
+                    <input name="amount" type="number" inputmode="decimal" step="1" value="${m.amount}" placeholder="金額" required>
+                    <input name="memo" value="${escapeHtml(m.memo)}" placeholder="メモ">
+                    <input name="date" type="date" value="${m.date}" required>
+                    <div style="display:flex;gap:8px;">
+                      <button type="submit" class="submit-btn ${ac}" style="flex:1;">保存</button>
+                      <button type="button" class="cancel-edit-btn" data-cancel-id="${m.id}">キャンセル</button>
+                    </div>
+                  </form>
+                </td>
+              </tr>`;
+            return `
+              <tr>
+                <td style="color:#8b8398;">${m.date||''}<br><span class="money-who ${m.user}">${walletName(m.user)}</span>${m.kind==='settle'?` → <span class="money-who ${m.payee}">${walletName(m.payee)}</span>`:''}</td>
+                <td><span class="money-cat-pill">${kindLabel[m.kind]||m.kind}</span>${m.category?` <span class="money-cat-pill">${escapeHtml(m.category)}</span>`:''}</td>
+                <td style="color:#9ca3af;">${escapeHtml(m.memo)}</td>
+                <td class="money-amount ${kindColor[m.kind]}">¥${yen(m.amount)}</td>
+                <td style="display:flex;gap:4px;">
+                  <button class="edit-icon-btn" data-edit-money="${m.id}" title="編集">✏️</button>
+                  <button class="del-icon-btn" data-del-money="${m.id}">✕</button>
+                </td>
+              </tr>`;
+          }).join('')}
         </tbody>
       </table>`}
     </div>`;
@@ -584,6 +614,10 @@ function moneyHTML(u, isK, ac) {
 //  SHOPS SECTION（おすすめのお店・共有）
 // ============================================================
 function shopsHTML(u, isK, ac) {
+  const statusFilter = state.shopStatus || 'all';
+  const filtered = statusFilter === 'all' ? state.shops
+    : state.shops.filter(s => s.status === statusFilter);
+
   return `
     <div class="hero ${u}">
       <div class="hero-tag">OUR FAVORITE PLACES</div>
@@ -605,20 +639,33 @@ function shopsHTML(u, isK, ac) {
           <option value="2">★★☆☆☆</option>
           <option value="1">★☆☆☆☆</option>
         </select>
+        <select name="status">
+          <option value="want">🎯 行きたい</option>
+          <option value="went">✅ 行った</option>
+        </select>
         <input name="url" type="url" inputmode="url" placeholder="リンク（任意）" class="${!isK?'pf':''}">
         <input name="comment" placeholder="コメント（任意）" class="${!isK?'pf':''}" style="grid-column:1/-1;">
         <button type="submit" class="submit-btn ${ac}" style="grid-column:1/-1;">+ 追加</button>
       </form>
     </div>
     <div class="section">
-      <div class="section-title" style="color:#38bdf8;">🗺️ LIST (${state.shops.length})</div>
-      ${state.shops.length===0?'<p class="empty">まだお店が登録されていません</p>':`
+      <div class="shop-status-tabs">
+        <button class="shop-tab ${statusFilter==='all'?'active-blue':''}" data-shop-status="all">すべて (${state.shops.length})</button>
+        <button class="shop-tab ${statusFilter==='want'?'shop-tab-want':''}" data-shop-status="want">🎯 行きたい (${state.shops.filter(s=>s.status==='want'||!s.status).length})</button>
+        <button class="shop-tab ${statusFilter==='went'?'shop-tab-went':''}" data-shop-status="went">✅ 行った (${state.shops.filter(s=>s.status==='went').length})</button>
+      </div>
+      ${filtered.length===0?'<p class="empty">該当するお店がありません</p>':`
       <div class="shop-grid">
-        ${state.shops.map(s=>`
+        ${filtered.map(s=>`
           <div class="shop-card">
             <button class="del-icon-btn" style="position:absolute;top:12px;right:12px;" data-del-shop="${s.id}">✕</button>
             <div class="shop-name">${escapeHtml(s.name)}</div>
-            <span class="shop-cat">${escapeHtml(s.category)}</span>
+            <div class="shop-status-row">
+              <span class="shop-cat">${escapeHtml(s.category)}</span>
+              <button class="shop-status-btn ${s.status==='went'?'went':''}" data-toggle-status="${s.id}" data-current="${s.status||'want'}">
+                ${s.status==='went'?'✅ 行った':'🎯 行きたい'}
+              </button>
+            </div>
             ${s.area?`<div class="shop-area">📍 ${escapeHtml(s.area)}</div>`:''}
             <div class="shop-rating">${'★'.repeat(s.rating)}${'☆'.repeat(5-s.rating)}</div>
             ${s.comment?`<div class="shop-comment">${escapeHtml(s.comment)}</div>`:''}
@@ -873,12 +920,65 @@ function bindEvents() {
     const f=e.target;
     const data={
       name: f.name.value.trim(), category: f.category.value, area: f.area.value.trim(),
-      rating: parseInt(f.rating.value)||3, url: f.url.value.trim(), comment: f.comment.value.trim(),
+      rating: parseInt(f.rating.value)||3, url: f.url.value.trim(),
+      comment: f.comment.value.trim(), status: f.status.value || 'want',
     };
     state.shops.unshift({id:'temp-'+Date.now(), user:state.user, ...data});
     f.reset(); render();
     await saveShop(state.user, data);
     state.shops=await loadShops(); render();
+  });
+
+  // Edit Money（✏️ボタン）
+  document.querySelectorAll('[data-edit-money]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.editMoneyId = state.editMoneyId===btn.dataset.editMoney ? null : btn.dataset.editMoney;
+      render();
+    });
+  });
+
+  // Cancel edit
+  document.querySelectorAll('[data-cancel-id]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ state.editMoneyId=null; render(); });
+  });
+
+  // Edit Money form submit（削除→再追加）
+  document.querySelectorAll('.money-edit-form').forEach(form=>{
+    form.addEventListener('submit', async e=>{
+      e.preventDefault();
+      const id = form.dataset.editId;
+      const orig = state.money.find(m=>m.id===id);
+      if (!orig) return;
+      const data = {
+        kind: orig.kind, category: orig.category, payee: orig.payee||'',
+        amount: parseFloat(form.amount.value)||0,
+        memo: form.memo.value.trim(),
+        date: form.date.value,
+      };
+      state.money = state.money.filter(m=>m.id!==id);
+      state.money.unshift({id:'temp-'+Date.now(), user:orig.user, ...data});
+      state.editMoneyId=null; render();
+      await removeMoney(id);
+      await saveMoney(orig.user, data);
+      state.money=await loadMoney(); render();
+    });
+  });
+
+  // Shops status filter tabs
+  document.querySelectorAll('[data-shop-status]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ state.shopStatus=btn.dataset.shopStatus; render(); });
+  });
+
+  // Shop status toggle（行きたい ↔ 行った）
+  document.querySelectorAll('[data-toggle-status]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.dataset.toggleStatus;
+      const newStatus = btn.dataset.current==='went' ? 'want' : 'went';
+      state.shops = state.shops.map(s=>s.id===id ? {...s, status:newStatus} : s);
+      render();
+      await updateShopStatus(id, newStatus);
+      state.shops=await loadShops(); render();
+    });
   });
 
   // Delete Shop
