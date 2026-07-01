@@ -145,11 +145,8 @@ async function loadShops() {
 async function saveShop(user, data) { await gasPost({ action: 'addShop', data: JSON.stringify({ user, ...data }) }); }
 async function removeShop(id) { await gasPost({ action: 'deleteShop', id }); }
 async function updateShopStatus(id, status) {
-  // ステータス更新: 削除して新しいデータで再追加
-  const shop = state.shops.find(s=>s.id===id);
-  if (!shop) return;
-  await removeShop(id);
-  await saveShop(shop.user, { ...shop, id: undefined, status });
+  // delete+re-add ではなく専用アクションで status セルを直接上書き
+  await gasPost({ action: 'updateShopStatus', id, status });
 }
 
 async function loadAll() {
