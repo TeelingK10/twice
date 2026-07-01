@@ -480,3 +480,52 @@ button{font-family:inherit;}
   padding:6px 12px;border-radius:12px;font-size:11px;text-decoration:none;
 }
 .shop-link:hover{background:#0ea5e9;}
+
+/* ========================================
+   MONEY 履歴 編集
+======================================== */
+.edit-icon-btn{
+  background:#e0f2fe;border:none;color:#0ea5e9;width:34px;height:34px;
+  border-radius:12px;cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;transition:0.2s;
+}
+.edit-icon-btn:hover{background:#bae6fd;}
+.money-edit-row td{padding:10px 8px;background:#f0f9ff;}
+.money-edit-form{
+  display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;align-items:end;
+}
+.money-edit-form input{
+  padding:10px 12px;border:1px solid #d6eaf8;border-radius:12px;
+  background:#eef7fd;color:#1e293b;font-size:15px;font-weight:600;width:100%;
+}
+.money-edit-form input:focus{outline:none;border-color:#38bdf8;}
+.cancel-edit-btn{
+  padding:12px;border:1px solid #d6eaf8;border-radius:14px;background:#ffffff;
+  color:#5b7a99;cursor:pointer;font-size:14px;font-weight:700;transition:0.2s;min-height:48px;
+}
+.cancel-edit-btn:hover{background:#fee2e2;color:#ef4444;border-color:#fca5a5;}
+@media(max-width:700px){
+  .money-edit-form{grid-template-columns:1fr 1fr;}
+}
+
+/* ========================================
+   SHOPS ステータスフィルタ・ステータスバッジ
+======================================== */
+.shop-status-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.shop-tab{
+  padding:9px 16px;border-radius:14px;border:1px solid #d6eaf8;background:#ffffff;
+  color:#5b7a99;font-size:13px;font-weight:700;cursor:pointer;transition:0.2s;
+}
+.shop-tab:hover{background:#e0f2fe;color:#0c4a6e;}
+.shop-tab.active-blue{background:rgba(56,189,248,0.2);border-color:#38bdf8;color:#0ea5e9;}
+.shop-tab.shop-tab-want{background:rgba(251,191,36,0.18);border-color:#fbbf24;color:#d97706;}
+.shop-tab.shop-tab-went{background:rgba(74,222,128,0.18);border-color:#4ade80;color:#16a34a;}
+
+.shop-status-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.shop-status-btn{
+  padding:5px 12px;border-radius:20px;border:1px solid #fbbf24;
+  background:rgba(251,191,36,0.12);color:#d97706;font-size:12px;font-weight:700;
+  cursor:pointer;transition:0.2s;white-space:nowrap;
+}
+.shop-status-btn:hover{background:#fef3c7;}
+.shop-status-btn.went{background:rgba(74,222,128,0.15);border-color:#4ade80;color:#16a34a;}
+.shop-status-btn.went:hover{background:#dcfce7;}
