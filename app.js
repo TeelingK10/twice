@@ -16,7 +16,9 @@ const state = {
   shops:       [],
   activeDay:   todayIndex(),
   selectedEx:  null,
-  editMoneyId: null,  // 編集中の履歴ID
+  editMoneyId:   null,  // 編集中の履歴ID
+  editWorkoutId: null,  // 編集中のワークアウトID
+  editShopId:    null,  // 編集中のショップID
   shopStatus:  'all', // shops filter: 'all' | 'want' | 'went'
   calYear:     new Date().getFullYear(),
   calMonth:    new Date().getMonth(),
@@ -355,18 +357,41 @@ function gymLogHTML(isK, ac, pr, today, gw, canEdit) {
       <div class="section-title ${ac}">📝 WORKOUT LOG</div>
       ${gw.length===0?'<p class="empty">まだ記録がありません。</p>':''}
       <div class="workout-grid">
-        ${gw.map(w=>`
-          <div class="workout-card ${!isK?'np':''}">
-            <div class="wc-name ${!isK?'purple':''}">${escapeHtml(w.exercise)}</div>
-            <div class="workout-stats">
-              <div><span>WEIGHT</span><strong>${w.weight}<small style="font-size:11px;color:#6b7280;">kg</small></strong></div>
-              <div><span>REPS</span><strong>${w.reps}</strong></div>
-              <div><span>SETS</span><strong>${w.sets}</strong></div>
-            </div>
-            <div class="workout-date">${w.date||''}</div>
-            ${pr[w.exercise]===w.weight?`<div class="pr-badge ${!isK?'pp':''}">🏆 PR</div>`:''}
-            ${canEdit?`<button class="del-btn" data-del-workout="${w.id}">削除</button>`:''}
-          </div>`).join('')}
+        ${gw.map(w=>{
+          const isEditing = state.editWorkoutId === w.id;
+          return `
+          <div class="workout-card ${!isK?'np':''} ${isEditing?'editing':''}">
+            ${isEditing ? `
+              <form class="workout-edit-form" data-edit-id="${w.id}">
+                <input name="exercise" value="${escapeHtml(w.exercise)}" placeholder="種目名" required class="${!isK?'pf':''}">
+                <div class="workout-edit-row">
+                  <label>重量<input name="weight" type="number" inputmode="decimal" step="0.5" value="${w.weight}" required></label>
+                  <label>Reps<input name="reps" type="number" inputmode="numeric" value="${w.reps}" required></label>
+                  <label>Sets<input name="sets" type="number" inputmode="numeric" value="${w.sets}" required></label>
+                </div>
+                <input name="date" type="date" value="${w.date}" required class="${!isK?'pf':''}">
+                <div style="display:flex;gap:8px;margin-top:4px;">
+                  <button type="submit" class="submit-btn ${ac}" style="flex:1;padding:10px;">保存</button>
+                  <button type="button" class="cancel-edit-btn" data-cancel-workout="${w.id}">✕</button>
+                </div>
+              </form>
+            ` : `
+              <div class="wc-name ${!isK?'purple':''}">${escapeHtml(w.exercise)}</div>
+              <div class="workout-stats">
+                <div><span>WEIGHT</span><strong>${w.weight}<small style="font-size:11px;color:#6b7280;">kg</small></strong></div>
+                <div><span>REPS</span><strong>${w.reps}</strong></div>
+                <div><span>SETS</span><strong>${w.sets}</strong></div>
+              </div>
+              <div class="workout-date">${w.date||''}</div>
+              ${pr[w.exercise]===w.weight?`<div class="pr-badge ${!isK?'pp':''}">🏆 PR</div>`:''}
+              ${canEdit?`
+                <div style="display:flex;gap:6px;margin-top:12px;">
+                  <button class="edit-icon-btn" style="flex:1;" data-edit-workout="${w.id}">✏️ 編集</button>
+                  <button class="del-btn" style="margin-top:0;flex:1;" data-del-workout="${w.id}">削除</button>
+                </div>`:''}
+            `}
+          </div>`;
+        }).join('')}
       </div>
     </div>`;
 }
@@ -656,24 +681,53 @@ function shopsHTML(u, isK, ac) {
       </div>
       ${filtered.length===0?'<p class="empty">該当するお店がありません</p>':`
       <div class="shop-grid">
-        ${filtered.map(s=>`
-          <div class="shop-card">
-            <button class="del-icon-btn" style="position:absolute;top:12px;right:12px;" data-del-shop="${s.id}">✕</button>
-            <div class="shop-name">${escapeHtml(s.name)}</div>
-            <div class="shop-status-row">
-              <span class="shop-cat">${escapeHtml(s.category)}</span>
-              <button class="shop-status-btn ${s.status==='went'?'went':''}" data-toggle-status="${s.id}" data-current="${s.status||'want'}">
-                ${s.status==='went'?'✅ 行った':'🎯 行きたい'}
-              </button>
-            </div>
-            ${s.area?`<div class="shop-area">📍 ${escapeHtml(s.area)}</div>`:''}
-            <div class="shop-rating">${'★'.repeat(s.rating)}${'☆'.repeat(5-s.rating)}</div>
-            ${s.comment?`<div class="shop-comment">${escapeHtml(s.comment)}</div>`:''}
-            <div class="shop-foot">
-              <span class="shop-by">by ${s.user==='kaito'?'かいと':'なな'}</span>
-              ${s.url?`<a href="${s.url}" target="_blank" class="shop-link">開く</a>`:''}
-            </div>
-          </div>`).join('')}
+        ${filtered.map(s=>{
+          const isEditing = state.editShopId === s.id;
+          return `
+          <div class="shop-card ${isEditing?'editing':''}">
+            ${isEditing ? `
+              <form class="shop-edit-form" data-edit-id="${s.id}">
+                <input name="name" value="${escapeHtml(s.name)}" placeholder="お店の名前" required>
+                <select name="category">
+                  ${SHOP_CATS.map(c=>`<option value="${c}" ${s.category===c?'selected':''}>${c}</option>`).join('')}
+                </select>
+                <input name="area" value="${escapeHtml(s.area)}" placeholder="エリア">
+                <select name="rating">
+                  ${[5,4,3,2,1].map(n=>`<option value="${n}" ${s.rating===n?'selected':''}>${'★'.repeat(n)}${'☆'.repeat(5-n)}</option>`).join('')}
+                </select>
+                <select name="status">
+                  <option value="want" ${(s.status||'want')==='want'?'selected':''}>🎯 行きたい</option>
+                  <option value="went" ${s.status==='went'?'selected':''}>✅ 行った</option>
+                </select>
+                <input name="url" type="url" value="${escapeHtml(s.url)}" placeholder="リンク">
+                <input name="comment" value="${escapeHtml(s.comment)}" placeholder="コメント" style="grid-column:1/-1;">
+                <div style="display:flex;gap:8px;grid-column:1/-1;">
+                  <button type="submit" class="submit-btn ${ac}" style="flex:1;padding:10px;">保存</button>
+                  <button type="button" class="cancel-edit-btn" data-cancel-shop="${s.id}">✕</button>
+                </div>
+              </form>
+            ` : `
+              <div style="display:flex;gap:4px;position:absolute;top:12px;right:12px;">
+                <button class="edit-icon-btn" data-edit-shop="${s.id}" title="編集">✏️</button>
+                <button class="del-icon-btn" data-del-shop="${s.id}">✕</button>
+              </div>
+              <div class="shop-name" style="padding-right:76px;">${escapeHtml(s.name)}</div>
+              <div class="shop-status-row">
+                <span class="shop-cat">${escapeHtml(s.category)}</span>
+                <button class="shop-status-btn ${s.status==='went'?'went':''}" data-toggle-status="${s.id}" data-current="${s.status||'want'}">
+                  ${s.status==='went'?'✅ 行った':'🎯 行きたい'}
+                </button>
+              </div>
+              ${s.area?`<div class="shop-area">📍 ${escapeHtml(s.area)}</div>`:''}
+              <div class="shop-rating">${'★'.repeat(s.rating)}${'☆'.repeat(5-s.rating)}</div>
+              ${s.comment?`<div class="shop-comment">${escapeHtml(s.comment)}</div>`:''}
+              <div class="shop-foot">
+                <span class="shop-by">by ${s.user==='kaito'?'かいと':'なな'}</span>
+                ${s.url?`<a href="${s.url}" target="_blank" class="shop-link">開く</a>`:''}
+              </div>
+            `}
+          </div>`;
+        }).join('')}
       </div>`}
     </div>`;
 }
@@ -929,6 +983,69 @@ function bindEvents() {
     state.shops=await loadShops(); render();
   });
 
+  // Edit Workout（✏️ボタン）
+  document.querySelectorAll('[data-edit-workout]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.editWorkoutId = state.editWorkoutId===btn.dataset.editWorkout ? null : btn.dataset.editWorkout;
+      render();
+    });
+  });
+  document.querySelectorAll('[data-cancel-workout]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ state.editWorkoutId=null; render(); });
+  });
+  document.querySelectorAll('.workout-edit-form').forEach(form=>{
+    form.addEventListener('submit', async e=>{
+      e.preventDefault();
+      const id = form.dataset.editId;
+      const orig = state.workouts.find(w=>w.id===id);
+      if (!orig) return;
+      const data = {
+        exercise: form.exercise.value.trim(),
+        weight: parseFloat(form.weight.value)||0,
+        reps: parseInt(form.reps.value)||0,
+        sets: parseInt(form.sets.value)||0,
+        date: form.date.value,
+      };
+      state.workouts = state.workouts.filter(w=>w.id!==id);
+      state.workouts.unshift({id:'temp-'+Date.now(), user:orig.user, ...data});
+      state.editWorkoutId=null; render();
+      await removeWorkout(id);
+      await saveWorkout(orig.user, data);
+      state.workouts=await loadWorkouts(); render();
+    });
+  });
+
+  // Edit Shop（✏️ボタン）
+  document.querySelectorAll('[data-edit-shop]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.editShopId = state.editShopId===btn.dataset.editShop ? null : btn.dataset.editShop;
+      render();
+    });
+  });
+  document.querySelectorAll('[data-cancel-shop]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ state.editShopId=null; render(); });
+  });
+  document.querySelectorAll('.shop-edit-form').forEach(form=>{
+    form.addEventListener('submit', async e=>{
+      e.preventDefault();
+      const id = form.dataset.editId;
+      const orig = state.shops.find(s=>s.id===id);
+      if (!orig) return;
+      const data = {
+        name: form.name.value.trim(), category: form.category.value,
+        area: form.area.value.trim(), rating: parseInt(form.rating.value)||3,
+        status: form.status.value||'want', url: form.url.value.trim(),
+        comment: form.comment.value.trim(),
+      };
+      state.shops = state.shops.filter(s=>s.id!==id);
+      state.shops.unshift({id:'temp-'+Date.now(), user:orig.user, ...data});
+      state.editShopId=null; render();
+      await removeShop(id);
+      await saveShop(orig.user, data);
+      state.shops=await loadShops(); render();
+    });
+  });
+
   // Edit Money（✏️ボタン）
   document.querySelectorAll('[data-edit-money]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -937,9 +1054,9 @@ function bindEvents() {
     });
   });
 
-  // Cancel edit
+  // Cancel edit (money)
   document.querySelectorAll('[data-cancel-id]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ state.editMoneyId=null; render(); });
+    btn.addEventListener('click', ()=>{ state.editMoneyId=null; state.editWorkoutId=null; state.editShopId=null; render(); });
   });
 
   // Edit Money form submit（削除→再追加）
