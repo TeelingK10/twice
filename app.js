@@ -191,7 +191,7 @@ function loginHTML() {
       <div class="login-box">
         <div class="app-title">WIKI</div>
         <div class="app-sub">OUR LIFE TOGETHER</div>
-        // <div class="status-badge connected">✅ Google スプレッドシート連携済み</div>
+        <div class="status-badge connected">✅ Google スプレッドシート連携済み</div>
         <div class="user-grid">
           <button class="user-btn kaito" id="btn-kaito"><div class="user-avatar">🌊</div><div>かいと</div></button>
           <button class="user-btn nana"  id="btn-nana"> <div class="user-avatar">🏝️</div><div>なな</div></button>
@@ -213,9 +213,7 @@ function homeHTML() {
 
   return `
     <div class="wiki-hero">
-      // <div class="wiki-hero-tag">✨ FOR US, BY US ✨</div>
       <h1>かいと & なな WIKI</h1>
-      <div class="wiki-hero-sub">ふたりの記録をひとつの場所に🎉</div>
     </div>
     <div class="feature-grid">
       <button class="feature-card ${isK?'fc-gym-k':'fc-gym-n'}" data-section="gym" data-gymuser="${state.user}">
@@ -229,7 +227,6 @@ function homeHTML() {
         <div class="fc-bar"></div>
         <span class="fc-icon">💰</span>
         <div class="fc-title">共有の財布</div>
-        // <div class="fc-sub">財布残高＋立て替え精算</div>
         <div class="fc-stat">¥${yen(wallet.balance)} <span style="font-size:12px;color:#6b7280;">残高</span></div>
       </button>
       <button class="feature-card fc-shops" data-section="shops">
@@ -452,7 +449,7 @@ function gymMenuHTML(isK, ac, gm, gw, canEdit) {
             <div class="menu-row-right">
               ${m.video_url?`<a href="${m.video_url}" target="_blank" class="video-btn ${!isK?'purple-video':''}">▶ 動画</a>`:''}
               <input id="qw-${m.id}" type="number" inputmode="decimal" step="0.5" class="qty-input"
-                value="${last?last.weight:''}" placeholder="kg">
+                value="" placeholder="${last?last.weight+'kg':'kg'}">
               <button class="quick-add-btn ${!isK?'purple-quick':''}"
                 data-exercise="${escapeHtml(m.exercise)}"
                 data-weight-input="qw-${m.id}"
@@ -554,7 +551,6 @@ function moneyHTML(u, isK, ac) {
     <div class="hero ${u}">
       <div class="hero-tag">SHARED WALLET</div>
       <h1>💰 共有の財布</h1>
-      // <div class="hero-sub">ふたりのお財布＋立て替え精算（共有データ）</div>
     </div>
 
     <div class="wallet-balance-card">
@@ -569,7 +565,7 @@ function moneyHTML(u, isK, ac) {
 
     <div class="settle-card ${owedAmount===0?'settle-zero':''}">
       ${owedAmount===0
-        // ? `<div class="settle-zero-text">🎉 立て替えの貸し借りはぴったりです！</div>`
+        ? `<div class="settle-zero-text">✅ 貸し借りなし</div>`
         : `<div class="settle-text"><span class="money-who ${owerUser}">${walletName(owerUser)}</span> が <span class="money-who ${owedUser}">${walletName(owedUser)}</span> に <strong>¥${yen(owedAmount)}</strong> 払う番です</div>
            <button class="submit-btn ${ac}" id="btn-settle" data-ower="${owerUser}" data-owed="${owedUser}" data-amount="${owedAmount}">精算する（払った）</button>`}
     </div>
