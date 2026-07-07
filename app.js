@@ -389,7 +389,7 @@ function homeHTML() {
           .sort((a,b)=>a.days-b.days)
           .slice(0,3);
         if (upcoming.length===0) return '';
-        const catIcon = {'付き合い記念日':'💑','誕生日':'🎂','イベント':'🎉','その他':'📅'};
+        const catIcon = {'付き合い記念日':'🙌','誕生日':'🎂','イベント':'🎉','その他':'📅'};
         return `
           <div class="home-anniv-bar" style="margin-bottom:16px;">
             ${upcoming.map(a=>`
