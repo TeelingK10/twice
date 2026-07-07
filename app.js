@@ -19,7 +19,14 @@ const state = {
   editMoneyId:   null,  // 編集中の履歴ID
   editWorkoutId: null,  // 編集中のワークアウトID
   editShopId:    null,  // 編集中のショップID
-  shopStatus:  'all', // shops filter: 'all' | 'want' | 'went'
+  shopStatus:  'all',
+  goals:       [],
+  trips:       [],
+  tripItems:   [],
+  tripShops:   [],        // 展開中トリップのお店リスト
+  activeTripId: null,     // 展開中のトリップ
+  activeTripTab: 'todo',  // 'todo' | 'shops'
+  editingReviewId: null,  // 思い出メモ編集中のトリップID
   calYear:     new Date().getFullYear(),
   calMonth:    new Date().getMonth(),
   calSelected: null,
@@ -29,7 +36,9 @@ const state = {
 const DAY_NAMES   = ['月','火','水','木','金','土','日'];
 const MONTH_NAMES = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 const WALLET_CATS = ['食費','デート','日用品','娯楽','住居','交通','旅行','その他'];
-const SHOP_CATS = ['ごはん','カフェ','デート','旅行','買い物','その他'];
+const SHOP_CATS  = ['ごはん','カフェ','デート','旅行','買い物','その他'];
+const GOAL_CATS  = ['健康','貯金','旅行','趣味','二人で','その他'];
+const TRIP_STATUS_LIST = ['計画中','決定','行った'];
 
 function todayIndex() {
   const d = new Date().getDay();
@@ -149,11 +158,68 @@ async function updateShopStatus(id, status) {
   await gasPost({ action: 'updateShopStatus', id, status });
 }
 
+// ── Goals ──
+async function loadGoals() {
+  const res = await gasGet({ action: 'getGoals' });
+  if (!res.ok) return state.goals;
+  return res.rows.map(r => ({
+    id: String(r.id), user: r.user,
+    title: r.title||'', category: r.category||'',
+    target_date: String(r.target_date||'').trim().slice(0,10),
+    progress: Math.min(100, Math.max(0, parseInt(r.progress)||0)),
+    status: r.status||'active',  // active | done | dropped
+    memo: r.memo||'',
+  }));
+}
+async function saveGoal(user, data) { await gasPost({ action: 'addGoal', data: JSON.stringify({ user, ...data }) }); }
+async function removeGoal(id) { await gasPost({ action: 'deleteGoal', id }); }
+async function updateGoalProgress(id, progress) { await gasPost({ action: 'updateGoalField', id, col: 6, value: progress }); }
+async function updateGoalStatus(id, status) { await gasPost({ action: 'updateGoalField', id, col: 7, value: status }); }
+
+// ── Trips ──
+async function loadTrips() {
+  const res = await gasGet({ action: 'getTrips' });
+  if (!res.ok) return state.trips;
+  return res.rows.map(r => ({
+    id: String(r.id), user: r.user,
+    name: r.name||'', destination: r.destination||'',
+    start_date: String(r.start_date||'').slice(0,10),
+    end_date: String(r.end_date||'').slice(0,10),
+    budget: parseFloat(r.budget)||0,
+    status: r.status||'計画中',
+    notes: r.notes||'',
+    review: r.review||'',   // 思い出メモ
+  }));
+}
+async function saveTrip(user, data) { await gasPost({ action: 'addTrip', data: JSON.stringify({ user, ...data }) }); }
+async function removeTrip(id) { await gasPost({ action: 'deleteTrip', id }); }
+async function updateTripReview(id, review) { await gasPost({ action: 'updateTripReview', id, review }); }
+
+// ── Trip Items (チェックリスト) ──
+async function loadTripItems(tripId) {
+  const res = await gasGet({ action: 'getTripItems', trip_id: tripId });
+  if (!res.ok) return [];
+  return res.rows.map(r => ({ id: String(r.id), trip_id: String(r.trip_id), user: r.user, text: r.text||'', done: r.done==='true'||r.done===true }));
+}
+async function saveTripItem(user, tripId, text) { await gasPost({ action: 'addTripItem', data: JSON.stringify({ user, trip_id: tripId, text, done: 'false' }) }); }
+async function removeTripItem(id) { await gasPost({ action: 'deleteTripItem', id }); }
+async function toggleTripItem(id, done) { await gasPost({ action: 'updateTripItemDone', id, done: String(!done) }); }
+
+// ── Trip Shops (旅行ごとのお店) ──
+async function loadTripShops(tripId) {
+  const res = await gasGet({ action: 'getTripShops', trip_id: tripId });
+  if (!res.ok) return [];
+  return res.rows.map(r => ({ id: String(r.id), trip_id: String(r.trip_id), user: r.user, name: r.name||'', comment: r.comment||'', url: r.url||'' }));
+}
+async function saveTripShop(user, tripId, data) { await gasPost({ action: 'addTripShop', data: JSON.stringify({ user, trip_id: tripId, ...data }) }); }
+async function removeTripShop(id) { await gasPost({ action: 'deleteTripShop', id }); }
+
 async function loadAll() {
-  const [workouts, menus, money, shops] = await Promise.all([
-    loadWorkouts(), loadMenus(), loadMoney(), loadShops(),
+  const [workouts, menus, money, shops, goals, trips] = await Promise.all([
+    loadWorkouts(), loadMenus(), loadMoney(), loadShops(), loadGoals(), loadTrips(),
   ]);
-  state.workouts = workouts; state.menus = menus; state.money = money; state.shops = shops;
+  state.workouts = workouts; state.menus = menus; state.money = money;
+  state.shops = shops; state.goals = goals; state.trips = trips;
 }
 
 // ============================================================
@@ -235,6 +301,20 @@ function homeHTML() {
         <div class="fc-title">Shop</div>
         <div class="fc-sub">行きたい・行ったお店リスト</div>
         <div class="fc-stat">${state.shops.length}件 登録済み</div>
+      </button>
+      <button class="feature-card fc-goals" data-section="goals">
+        <div class="fc-bar"></div>
+        <span class="fc-icon">🎯</span>
+        <div class="fc-title">目標・チャレンジ</div>
+        <div class="fc-sub">ふたりで立てた目標の進捗管理</div>
+        <div class="fc-stat">${state.goals.filter(g=>g.status==='done').length}件 達成済み</div>
+      </button>
+      <button class="feature-card fc-trips" data-section="trips">
+        <div class="fc-bar"></div>
+        <span class="fc-icon">✈️</span>
+        <div class="fc-title">旅行プランナー</div>
+        <div class="fc-sub">行き先・予算・やることリスト</div>
+        <div class="fc-stat">${state.trips.length}件 登録済み</div>
       </button>
     </div>
     <div class="section">
@@ -448,8 +528,11 @@ function gymMenuHTML(isK, ac, gm, gw, canEdit) {
             ${canEdit ? `
             <div class="menu-row-right">
               ${m.video_url?`<a href="${m.video_url}" target="_blank" class="video-btn ${!isK?'purple-video':''}">▶ 動画</a>`:''}
-              <input id="qw-${m.id}" type="number" inputmode="decimal" step="0.5" class="qty-input"
-                value="" placeholder="${last?last.weight+'kg':'kg'}">
+              <div class="qty-wrap">
+                <input id="qw-${m.id}" type="number" inputmode="decimal" step="0.5" class="qty-input"
+                  value="" placeholder="${last?last.weight:'--'}">
+                <span class="qty-unit">kg</span>
+              </div>
               <button class="quick-add-btn ${!isK?'purple-quick':''}"
                 data-exercise="${escapeHtml(m.exercise)}"
                 data-weight-input="qw-${m.id}"
@@ -726,6 +809,249 @@ function shopsHTML(u, isK, ac) {
 }
 
 // ============================================================
+//  GOALS（目標・チャレンジ管理）
+// ============================================================
+function goalsHTML(u, isK, ac) {
+  const today = localDateStr();
+  const active  = state.goals.filter(g=>g.status==='active');
+  const done    = state.goals.filter(g=>g.status==='done');
+  const dropped = state.goals.filter(g=>g.status==='dropped');
+
+  function goalCard(g) {
+    const pct = g.progress;
+    const color = pct>=100?'#4ade80':pct>=50?'#38bdf8':'#fb923c';
+    const overdue = g.target_date && g.target_date < today && g.status==='active';
+    return `
+      <div class="goal-card ${g.status!=='active'?'goal-inactive':''}">
+        <div class="goal-header">
+          <span class="goal-cat-pill">${escapeHtml(g.category)}</span>
+          <span class="goal-by">by ${g.user==='kaito'?'かいと':'なな'}</span>
+        </div>
+        <div class="goal-title">${escapeHtml(g.title)}</div>
+        ${g.memo?`<div class="goal-memo">${escapeHtml(g.memo)}</div>`:''}
+        ${g.target_date?`<div class="goal-date ${overdue?'overdue':''}">📅 ${g.target_date}${overdue?' ⚠️期限切れ':''}</div>`:''}
+        ${g.status==='active' ? `
+          <div class="goal-progress-wrap">
+            <div class="goal-bar-bg"><div class="goal-bar-fill" style="width:${pct}%;background:${color};"></div></div>
+            <span class="goal-pct">${pct}%</span>
+          </div>
+          <div class="goal-actions">
+            <input type="number" class="goal-progress-input" data-goal-id="${g.id}" value="${pct}" min="0" max="100" placeholder="進捗%">
+            <button class="submit-btn ${ac}" style="padding:8px 12px;font-size:12px;" data-update-progress="${g.id}">更新</button>
+            <button class="goal-done-btn" data-goal-status="${g.id}" data-status="done">✅ 達成</button>
+            <button class="goal-drop-btn" data-goal-status="${g.id}" data-status="dropped">⬛ 断念</button>
+            <button class="del-btn" style="margin-top:0;" data-del-goal="${g.id}">削除</button>
+          </div>
+        ` : `
+          <div class="goal-progress-wrap">
+            <div class="goal-bar-bg"><div class="goal-bar-fill" style="width:${pct}%;background:${color};"></div></div>
+            <span class="goal-pct">${pct}%</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:10px;">
+            <button class="goal-done-btn" data-goal-status="${g.id}" data-status="active">↩ 再開</button>
+            <button class="del-btn" style="margin-top:0;" data-del-goal="${g.id}">削除</button>
+          </div>
+        `}
+      </div>`;
+  }
+
+  return `
+    <div class="hero ${u}">
+      <div class="hero-tag">CHALLENGES</div>
+      <h1>🎯 目標・チャレンジ</h1>
+      <div class="hero-sub">達成: ${done.length}件 ／ 進行中: ${active.length}件</div>
+    </div>
+    <div class="section">
+      <div class="section-title ${ac}">➕ 目標を追加</div>
+      <form class="add-form" id="form-goal">
+        <input name="title" placeholder="目標タイトル" required class="${!isK?'pf':''}">
+        <select name="category">${GOAL_CATS.map(c=>`<option value="${c}">${c}</option>`).join('')}</select>
+        <input name="target_date" type="date" class="${!isK?'pf':''}">
+        <input name="memo" placeholder="メモ（任意）" class="${!isK?'pf':''}">
+        <button type="submit" class="submit-btn ${ac}">+ 追加</button>
+      </form>
+    </div>
+    ${active.length>0?`
+    <div class="section">
+      <div class="section-title ${ac}">🔥 進行中 (${active.length})</div>
+      <div class="goal-grid">${active.map(goalCard).join('')}</div>
+    </div>`:''}
+    ${done.length>0?`
+    <div class="section">
+      <div class="section-title" style="color:#4ade80;">✅ 達成 (${done.length})</div>
+      <div class="goal-grid">${done.map(goalCard).join('')}</div>
+    </div>`:''}
+    ${dropped.length>0?`
+    <div class="section">
+      <div class="section-title" style="color:#94a3b8;">⬛ 断念 (${dropped.length})</div>
+      <div class="goal-grid">${dropped.map(goalCard).join('')}</div>
+    </div>`:''}
+    ${state.goals.length===0?`<div class="section"><p class="empty">まだ目標がありません。最初の目標を追加してみましょう！</p></div>`:''}`;
+}
+
+// ============================================================
+//  TRIPS（旅行プランナー）
+// ============================================================
+async function loadActiveTripSection() {
+  if (!state.activeTripId) return;
+  if (state.activeTripTab === 'todo') {
+    state.tripItems = await loadTripItems(state.activeTripId);
+  } else {
+    state.tripShops = await loadTripShops(state.activeTripId);
+  }
+  render();
+}
+
+function tripsHTML(u, isK, ac) {
+  const statusColor = { '計画中':'#fbbf24', '決定':'#38bdf8', '行った':'#4ade80' };
+
+  function tripCard(t) {
+    const isExpanded = state.activeTripId === t.id;
+    const curTab     = state.activeTripTab;
+    const myItems    = state.tripItems.filter(i=>i.trip_id===t.id);
+    const myShops    = state.tripShops.filter(s=>s.trip_id===t.id);
+    const doneCnt    = myItems.filter(i=>i.done).length;
+    const isWent     = t.status === '行った';
+    const isEditingReview = state.editingReviewId === t.id;
+
+    return `
+      <div class="trip-card">
+        <div class="trip-header">
+          <div style="flex:1;min-width:0;">
+            <div class="trip-name">${escapeHtml(t.name)}</div>
+            ${t.destination?`<div class="trip-dest">📍 ${escapeHtml(t.destination)}</div>`:''}
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+            <span class="trip-status-badge" style="background:${statusColor[t.status]||'#94a3b8'}22;color:${statusColor[t.status]||'#94a3b8'};border:1px solid ${statusColor[t.status]||'#94a3b8'}55;">${t.status}</span>
+            <button class="del-icon-btn" data-del-trip="${t.id}">✕</button>
+          </div>
+        </div>
+
+        <div class="trip-meta">
+          ${(t.start_date||t.end_date)?`<span>🗓 ${t.start_date||'?'} 〜 ${t.end_date||'?'}</span>`:''}
+          ${t.budget?`<span>💰 ¥${yen(t.budget)}</span>`:''}
+          <span class="goal-by">by ${t.user==='kaito'?'かいと':'なな'}</span>
+        </div>
+
+        ${t.notes?`<div class="trip-notes">${escapeHtml(t.notes)}</div>`:''}
+
+        ${isWent ? `
+        <div class="trip-review-wrap">
+          ${isEditingReview ? `
+            <form class="trip-review-form" data-review-id="${t.id}">
+              <textarea name="review" rows="3" placeholder="思い出を書いてね…" class="${!isK?'pf':''}">${escapeHtml(t.review)}</textarea>
+              <div style="display:flex;gap:8px;margin-top:6px;">
+                <button type="submit" class="submit-btn ${ac}" style="flex:1;padding:9px;">保存</button>
+                <button type="button" class="cancel-edit-btn" data-cancel-review="${t.id}">✕</button>
+              </div>
+            </form>
+          ` : `
+            <div class="trip-review-display" data-edit-review="${t.id}">
+              ${t.review
+                ? `<div class="trip-review-text">💭 ${escapeHtml(t.review)}</div><div class="trip-review-hint">タップして編集</div>`
+                : `<div class="trip-review-empty">💭 思い出メモを書く…</div>`}
+            </div>
+          `}
+        </div>` : ''}
+
+        <div class="trip-tabs-row">
+          <button class="trip-tab-btn ${isExpanded&&curTab==='todo'?'active-tab':''}${isExpanded&&curTab==='todo'?' '+ac:''}" data-trip-tab="${t.id}" data-tab="todo">
+            ✅ やること${myItems.length>0?` (${doneCnt}/${myItems.length})`:' +'}
+          </button>
+          <button class="trip-tab-btn ${isExpanded&&curTab==='shops'?'active-tab':''}${isExpanded&&curTab==='shops'?' '+ac:''}" data-trip-tab="${t.id}" data-tab="shops">
+            🍜 お店${myShops.length>0?` (${myShops.length})`:' +'}
+          </button>
+        </div>
+
+        ${isExpanded && curTab==='todo' ? `
+          <div class="trip-section-body">
+            ${myItems.map(item=>`
+              <div class="checklist-item">
+                <button class="check-toggle" data-toggle-item="${item.id}" data-done="${item.done}">${item.done?'✅':'⬜'}</button>
+                <span class="${item.done?'checked-text':''}">${escapeHtml(item.text)}</span>
+                <button class="del-icon-btn" data-del-item="${item.id}" style="margin-left:auto;">✕</button>
+              </div>`).join('')}
+            <form class="checklist-add-form" data-trip-id="${t.id}">
+              <input name="text" placeholder="やること・持ち物を追加…">
+              <button type="submit" class="submit-btn ${ac}" style="padding:8px 12px;font-size:13px;">追加</button>
+            </form>
+          </div>` : ''}
+
+        ${isExpanded && curTab==='shops' ? `
+          <div class="trip-section-body">
+            ${myShops.map(s=>`
+              <div class="trip-shop-item">
+                <div class="trip-shop-info">
+                  <span class="trip-shop-name">${escapeHtml(s.name)}</span>
+                  ${s.comment?`<span class="trip-shop-comment">${escapeHtml(s.comment)}</span>`:''}
+                </div>
+                <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+                  ${s.url?`<a href="${s.url}" target="_blank" class="shop-link">開く</a>`:''}
+                  <button class="del-icon-btn" data-del-trip-shop="${s.id}">✕</button>
+                </div>
+              </div>`).join('')}
+            <form class="trip-shop-add-form" data-trip-id="${t.id}">
+              <input name="name" placeholder="お店の名前" required>
+              <input name="comment" placeholder="ひとことコメント">
+              <input name="url" type="url" inputmode="url" placeholder="リンク（任意）">
+              <button type="submit" class="submit-btn ${ac}">追加</button>
+            </form>
+          </div>` : ''}
+      </div>`;
+  }
+
+  const planning = state.trips.filter(t=>t.status!=='行った');
+  const done     = state.trips.filter(t=>t.status==='行った');
+
+  return `
+    <div class="hero ${u}">
+      <div class="hero-tag">TRAVEL PLANNER</div>
+      <h1>✈️ 旅行プランナー</h1>
+      <div class="hero-sub">行った旅行: ${done.length}件 ／ 計画中: ${planning.length}件</div>
+    </div>
+    <div class="section">
+      <div class="section-title ${ac}">➕ 旅行を追加</div>
+      <form id="form-trip">
+        <div class="trip-add-required">
+          <input name="name" placeholder="旅行の名前（例：沖縄旅行）✱" required class="${!isK?'pf':''}">
+          <input name="destination" placeholder="行き先（例：沖縄）✱" required class="${!isK?'pf':''}">
+          <select name="status">${TRIP_STATUS_LIST.map(s=>`<option value="${s}">${s}</option>`).join('')}</select>
+        </div>
+        <details class="trip-optional">
+          <summary>📅 日程・予算・メモを追加（任意）</summary>
+          <div class="trip-optional-body">
+            <div class="trip-date-row">
+              <div class="trip-date-field">
+                <label>出発</label>
+                <input name="start_date" type="date" class="${!isK?'pf':''}">
+              </div>
+              <span class="trip-date-sep">〜</span>
+              <div class="trip-date-field">
+                <label>帰着</label>
+                <input name="end_date" type="date" class="${!isK?'pf':''}">
+              </div>
+            </div>
+            <input name="budget" type="number" inputmode="decimal" placeholder="予算 ¥" class="${!isK?'pf':''}">
+            <input name="notes" placeholder="メモ" class="${!isK?'pf':''}">
+          </div>
+        </details>
+        <button type="submit" class="submit-btn ${ac} trip-submit-btn">+ 追加</button>
+      </form>
+    </div>
+    ${planning.length>0?`
+    <div class="section">
+      <div class="section-title ${ac}">🗺️ 計画中 (${planning.length})</div>
+      <div class="trip-list">${planning.map(tripCard).join('')}</div>
+    </div>`:''}
+    ${done.length>0?`
+    <div class="section">
+      <div class="section-title" style="color:#4ade80;">🏖️ 行った旅行 (${done.length})</div>
+      <div class="trip-list">${done.map(tripCard).join('')}</div>
+    </div>`:''}
+    ${state.trips.length===0?`<div class="section"><p class="empty">まだ旅行の計画がありません。どこ行こうか！</p></div>`:''}`;
+}
+
+// ============================================================
 //  APP SHELL
 // ============================================================
 function appHTML() {
@@ -735,9 +1061,11 @@ function appHTML() {
 
   const navItems = [
     ['home',  null, '🏠 ホーム'],
-    ['gym',   u,    isK ? '🏋️ かいとジム' : '💪 ななジム'],
+    ['gym',   u,    isK ? '🌊 かいとジム' : '🏝️ ななジム'],
     ['money', null, '💰 財布'],
     ['shops', null, '📍 Shop'],
+    ['goals', null, '🎯 目標'],
+    ['trips', null, '✈️ 旅行'],
   ];
 
   const sidebar = `
@@ -750,7 +1078,7 @@ function appHTML() {
       </div>
       ${navItems.map(([p,gu,l]) => {
         const active = state.section===p;
-        const activeColor = p==='gym' ? ac : (p==='money'?'green':p==='shops'?'blue':ac);
+        const activeColor = p==='gym'?ac : p==='money'?'green' : p==='shops'?'blue' : p==='goals'?'orange' : p==='trips'?'purple' : ac;
         return `<button class="nav-btn ${active?'active-'+activeColor:''}" data-section="${p}" ${gu?`data-gymuser="${gu}"`:''}>${l}</button>`;
       }).join('')}
       <button class="logout-btn" id="btn-logout">← ユーザー切替</button>
@@ -758,8 +1086,11 @@ function appHTML() {
 
   let body = '';
   if (state.section==='home') body = homeHTML();
-  else if (state.section==='gym') body = gymHTML(u); // 自分のジムだけ閲覧可能
+  else if (state.section==='gym') body = gymHTML(u);
   else if (state.section==='money') body = moneyHTML(u, isK, ac);
+  else if (state.section==='shops') body = shopsHTML(u, isK, ac);
+  else if (state.section==='goals') body = goalsHTML(u, isK, ac);
+  else if (state.section==='trips') body = tripsHTML(u, isK, ac);
   else body = shopsHTML(u, isK, ac);
 
   return `
@@ -1098,6 +1429,153 @@ function bindEvents() {
       state.shops=state.shops.filter(s=>s.id!==id); render();
       await removeShop(id);
       state.shops=await loadShops(); render();
+    });
+  });
+
+  // ── GOALS ──
+  document.getElementById('form-goal')?.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = e.target;
+    const data = { title:f.title.value.trim(), category:f.category.value, target_date:f.target_date.value||'', progress:0, status:'active', memo:f.memo.value.trim() };
+    state.goals.unshift({id:'temp-'+Date.now(), user:state.user, ...data});
+    f.reset(); render();
+    await saveGoal(state.user, data);
+    state.goals=await loadGoals(); render();
+  });
+  document.querySelectorAll('[data-update-progress]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.dataset.updateProgress;
+      const input = document.querySelector(`.goal-progress-input[data-goal-id="${id}"]`);
+      const val = Math.min(100, Math.max(0, parseInt(input?.value)||0));
+      state.goals = state.goals.map(g=>g.id===id?{...g,progress:val}:g);
+      render();
+      await updateGoalProgress(id, val);
+      state.goals=await loadGoals(); render();
+    });
+  });
+  document.querySelectorAll('[data-goal-status]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.dataset.goalStatus, status = btn.dataset.status;
+      state.goals = state.goals.map(g=>g.id===id?{...g,status}:g);
+      render();
+      await updateGoalStatus(id, status);
+      state.goals=await loadGoals(); render();
+    });
+  });
+  document.querySelectorAll('[data-del-goal]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.dataset.delGoal;
+      state.goals=state.goals.filter(g=>g.id!==id); render();
+      await removeGoal(id);
+      state.goals=await loadGoals(); render();
+    });
+  });
+
+  // ── TRIPS ──
+  document.getElementById('form-trip')?.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = e.target;
+    const data = { name:f.name.value.trim(), destination:f.destination.value.trim(), start_date:f.start_date.value||'', end_date:f.end_date.value||'', budget:parseFloat(f.budget.value)||0, status:f.status.value, notes:f.notes.value.trim(), review:'' };
+    state.trips.unshift({id:'temp-'+Date.now(), user:state.user, ...data});
+    f.reset(); render();
+    await saveTrip(state.user, data);
+    state.trips=await loadTrips(); render();
+  });
+
+  // Tab buttons (やること / お店)
+  document.querySelectorAll('[data-trip-tab]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.dataset.tripTab, tab = btn.dataset.tab;
+      if (state.activeTripId===id && state.activeTripTab===tab) {
+        state.activeTripId=null; state.tripItems=[]; state.tripShops=[]; render();
+      } else {
+        state.activeTripId=id; state.activeTripTab=tab;
+        state.tripItems=[]; state.tripShops=[]; render();
+        loadActiveTripSection();
+      }
+    });
+  });
+
+  // 思い出メモ 編集開始
+  document.querySelectorAll('[data-edit-review]').forEach(el=>{
+    el.addEventListener('click', ()=>{ state.editingReviewId=el.dataset.editReview; render(); });
+  });
+  document.querySelectorAll('[data-cancel-review]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ state.editingReviewId=null; render(); });
+  });
+  document.querySelectorAll('.trip-review-form').forEach(form=>{
+    form.addEventListener('submit', async e=>{
+      e.preventDefault();
+      const id=form.dataset.reviewId, review=form.review.value.trim();
+      state.trips=state.trips.map(t=>t.id===id?{...t,review}:t);
+      state.editingReviewId=null; render();
+      await updateTripReview(id, review);
+      state.trips=await loadTrips(); render();
+    });
+  });
+
+  // Checklist items
+  document.querySelectorAll('.checklist-add-form').forEach(form=>{
+    form.addEventListener('submit', async e=>{
+      e.preventDefault();
+      const tripId=form.dataset.tripId, text=form.text.value.trim();
+      if (!text) return;
+      state.tripItems.push({id:'temp-'+Date.now(), trip_id:tripId, user:state.user, text, done:false});
+      form.reset(); render();
+      await saveTripItem(state.user, tripId, text);
+      state.tripItems=await loadTripItems(tripId); render();
+    });
+  });
+  document.querySelectorAll('[data-toggle-item]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id=btn.dataset.toggleItem, done=btn.dataset.done==='true';
+      state.tripItems=state.tripItems.map(i=>i.id===id?{...i,done:!done}:i); render();
+      await toggleTripItem(id, done);
+      if (state.activeTripId) state.tripItems=await loadTripItems(state.activeTripId);
+      render();
+    });
+  });
+  document.querySelectorAll('[data-del-item]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id=btn.dataset.delItem;
+      state.tripItems=state.tripItems.filter(i=>i.id!==id); render();
+      await removeTripItem(id);
+      if (state.activeTripId) state.tripItems=await loadTripItems(state.activeTripId);
+      render();
+    });
+  });
+
+  // Trip shops
+  document.querySelectorAll('.trip-shop-add-form').forEach(form=>{
+    form.addEventListener('submit', async e=>{
+      e.preventDefault();
+      const tripId=form.dataset.tripId;
+      const data={name:form.name.value.trim(), comment:form.comment.value.trim(), url:form.url.value.trim()};
+      if (!data.name) return;
+      state.tripShops.push({id:'temp-'+Date.now(), trip_id:tripId, user:state.user, ...data});
+      form.reset(); render();
+      await saveTripShop(state.user, tripId, data);
+      state.tripShops=await loadTripShops(tripId); render();
+    });
+  });
+  document.querySelectorAll('[data-del-trip-shop]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id=btn.dataset.delTripShop;
+      state.tripShops=state.tripShops.filter(s=>s.id!==id); render();
+      await removeTripShop(id);
+      if (state.activeTripId) state.tripShops=await loadTripShops(state.activeTripId);
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-del-trip]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id=btn.dataset.delTrip;
+      state.trips=state.trips.filter(t=>t.id!==id);
+      if (state.activeTripId===id) { state.activeTripId=null; state.tripItems=[]; state.tripShops=[]; }
+      render();
+      await removeTrip(id);
+      state.trips=await loadTrips(); render();
     });
   });
 
