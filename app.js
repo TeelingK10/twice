@@ -1234,7 +1234,7 @@ function calendarEventsHTML(u, isK, ac) {
     <div class="hero ${u}">
       <div class="hero-tag">CALENDAR</div>
       <h1>📅 カレンダー</h1>
-      <div class="hero-sub">記念日は💑🎂で特別表示されます</div>
+      <div class="hero-sub">日付をタップして予定を確認・追加</div>
     </div>
 
     <div class="section">
