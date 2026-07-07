@@ -435,7 +435,7 @@ function homeHTML() {
         <div class="fc-title">記念日</div>
         <div class="fc-sub">大切な日までのカウントダウン</div>
         <div class="fc-stat">${(() => {
-          const next = [...state.anniversaries]
+          const next = [...state.events]
             .map(a=>({...a,...getCountdown(a.date,a.repeat)}))
             .filter(a=>a.days!==null&&a.days>=0)
             .sort((a,b)=>a.days-b.days)[0];
