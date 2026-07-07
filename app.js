@@ -22,6 +22,10 @@ const state = {
   shopStatus:  'all',
   goals:       [],
   trips:       [],
+  events: [],
+  evYear: new Date().getFullYear(),
+  evMonth: new Date().getMonth(),
+  evSelected: null,
   tripItems:   [],
   tripShops:   [],        // 展開中トリップのお店リスト
   activeTripId: null,     // 展開中のトリップ
@@ -39,6 +43,8 @@ const WALLET_CATS = ['食費','デート','日用品','娯楽','住居','交通'
 const SHOP_CATS  = ['ごはん','カフェ','デート','旅行','買い物','その他'];
 const GOAL_CATS  = ['健康','貯金','旅行','趣味','二人で','その他'];
 const TRIP_STATUS_LIST = ['計画中','決定','行った'];
+const EVENT_SPECIAL = ['付き合い記念日','誕生日'];  // カレンダーで特別表示
+const EVENT_CATS = ['付き合い記念日','誕生日','予定','イベント','その他'];
 
 function todayIndex() {
   const d = new Date().getDay();
@@ -214,12 +220,49 @@ async function loadTripShops(tripId) {
 async function saveTripShop(user, tripId, data) { await gasPost({ action: 'addTripShop', data: JSON.stringify({ user, trip_id: tripId, ...data }) }); }
 async function removeTripShop(id) { await gasPost({ action: 'deleteTripShop', id }); }
 
+// ── Anniversaries（記念日）──
+async function loadEvents() {
+  const res = await gasGet({ action: 'getEvents' });
+  if (!res.ok) return state.events;
+  return res.rows.map(r => ({
+    id: String(r.id), user: r.user,
+    title: r.title||'', date: String(r.date||'').slice(0,10),
+    time: r.time||'',
+    category: r.category||'その他',
+    repeat: r.repeat||'yearly',
+    notes: r.notes||'',
+  }));
+}
+async function saveEvent(user, data) { await gasPost({ action: 'addEvent', data: JSON.stringify({ user, ...data }) }); }
+async function removeEvent(id) { await gasPost({ action: 'deleteEvent', id }); }
+
+// 次回の日付と残り日数を計算
+function getCountdown(dateStr, repeat) {
+  const todayStr = localDateStr();
+  const today = new Date(todayStr);
+  if (!dateStr || dateStr.length < 8) return { days: null, nextDate: '' };
+
+  if (repeat === 'yearly') {
+    const [, mm, dd] = dateStr.split('-');
+    const thisYear = new Date(`${today.getFullYear()}-${mm}-${dd}`);
+    const nextYear = new Date(`${today.getFullYear()+1}-${mm}-${dd}`);
+    const target = thisYear >= today ? thisYear : nextYear;
+    const days = Math.round((target - today) / 86400000);
+    return { days, nextDate: localDateStr(target), yearCount: target.getFullYear() - parseInt(dateStr.split('-')[0]) };
+  } else {
+    const target = new Date(dateStr);
+    const days = Math.round((target - today) / 86400000);
+    return { days, nextDate: dateStr, yearCount: null };
+  }
+}
+
 async function loadAll() {
-  const [workouts, menus, money, shops, goals, trips] = await Promise.all([
-    loadWorkouts(), loadMenus(), loadMoney(), loadShops(), loadGoals(), loadTrips(),
+  const [workouts, menus, money, shops, goals, trips, anniversaries] = await Promise.all([
+    loadWorkouts(), loadMenus(), loadMoney(), loadShops(), loadGoals(), loadTrips(), loadEvents(),
   ]);
   state.workouts = workouts; state.menus = menus; state.money = money;
   state.shops = shops; state.goals = goals; state.trips = trips;
+  state.events = anniversaries;
 }
 
 // ============================================================
@@ -316,9 +359,39 @@ function homeHTML() {
         <div class="fc-sub">行き先・予算・やることリスト</div>
         <div class="fc-stat">${state.trips.length}件 登録済み</div>
       </button>
+      <button class="feature-card fc-anniv" data-section="cal">
+        <div class="fc-bar"></div>
+        <span class="fc-icon">🎂</span>
+        <div class="fc-title">記念日</div>
+        <div class="fc-sub">大切な日までのカウントダウン</div>
+        <div class="fc-stat">${(() => {
+          const next = [...state.anniversaries]
+            .map(a=>({...a,...getCountdown(a.date,a.repeat)}))
+            .filter(a=>a.days!==null&&a.days>=0)
+            .sort((a,b)=>a.days-b.days)[0];
+          return next ? (next.days===0?'🎉 今日！':`次は ${next.days}日後`) : '登録しよう';
+        })()}</div>
+      </button>
     </div>
     <div class="section">
       <div class="section-title" style="color:#fbbf24;">🕐 最近の記録（${isK?'かいと':'なな'}）</div>
+      ${(() => {
+        const upcoming = [...state.events]
+          .map(a=>({...a,...getCountdown(a.date,a.repeat)}))
+          .filter(a=>a.days!==null && a.days>=0 && a.days<=30)
+          .sort((a,b)=>a.days-b.days)
+          .slice(0,3);
+        if (upcoming.length===0) return '';
+        const catIcon = {'付き合い記念日':'💑','誕生日':'🎂','イベント':'🎉','その他':'📅'};
+        return `
+          <div class="home-anniv-bar" style="margin-bottom:16px;">
+            ${upcoming.map(a=>`
+              <div class="home-anniv-item ${a.days===0?'today':a.days<=7?'soon':'near'}">
+                <span>${catIcon[a.category]||'📅'} ${escapeHtml(a.title)}</span>
+                <strong>${a.days===0?'今日！':a.days+'日後'}</strong>
+              </div>`).join('')}
+          </div>`;
+      })()}
       ${recent.length===0 ? '<p class="empty">まだ記録がありません。</p>' : `
       <table class="pr-table">
         <thead><tr><th>種目</th><th>重量</th><th>日付</th></tr></thead>
@@ -1052,6 +1125,147 @@ function tripsHTML(u, isK, ac) {
 }
 
 // ============================================================
+//  CALENDAR EVENTS（カレンダー + 記念日）
+// ============================================================
+function calendarEventsHTML(u, isK, ac) {
+  const year = state.evYear, month = state.evMonth;
+  const todayStr = localDateStr();
+  const today = new Date(todayStr);
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  // 指定月に表示すべきイベント（通常: その日付、毎年: MM-DDが一致）
+  function eventsForDate(dateStr) {
+    const [,mm,dd] = dateStr.split('-');
+    return state.events.filter(ev => {
+      if (ev.repeat === 'yearly') {
+        const [,evm,evd] = (ev.date||'').split('-');
+        return evm===mm && evd===dd;
+      }
+      return ev.date === dateStr;
+    });
+  }
+  function isSpecial(ev) { return EVENT_SPECIAL.includes(ev.category); }
+
+  // カレンダーグリッド
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const startOffset = (firstDay+6)%7;
+
+  let cells = '';
+  for (let i=0; i<startOffset; i++) cells += `<div class="cal-cell empty"></div>`;
+  for (let d=1; d<=daysInMonth; d++) {
+    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const evs = eventsForDate(ds);
+    const hasSpecial = evs.some(isSpecial);
+    const hasNormal  = evs.some(e=>!isSpecial(e));
+    const isToday    = ds === todayStr;
+    const isSel      = ds === state.evSelected;
+    const dow = (startOffset+d-1)%7;
+    cells += `
+      <div class="cal-cell ${isToday?'cal-today':''} ${isSel?'cal-sel':''} ${dow===6?'cal-sun':''} ${dow===5?'cal-sat':''}" data-ev-date="${ds}">
+        ${d}
+        <div class="ev-dots">
+          ${hasSpecial?`<span class="ev-dot special"></span>`:''}
+          ${hasNormal?`<span class="ev-dot normal"></span>`:''}
+        </div>
+      </div>`;
+  }
+
+  // 選択日のイベント詳細
+  let detail = '';
+  if (state.evSelected) {
+    const evs = eventsForDate(state.evSelected);
+    const catIcon = {'付き合い記念日':'💑','誕生日':'🎂','予定':'📌','イベント':'🎉','その他':'📅'};
+    const [,mm,dd] = state.evSelected.split('-');
+    detail = `
+      <div class="ev-detail">
+        <div class="ev-detail-date">${state.evSelected}</div>
+        ${evs.length===0?'<p class="empty" style="font-size:12px;">この日の予定はありません</p>':''}
+        ${evs.map(ev=>{
+          const cd = getCountdown(ev.date, ev.repeat);
+          return `
+          <div class="ev-item ${isSpecial(ev)?'special':''}">
+            <span class="ev-item-icon">${catIcon[ev.category]||'📅'}</span>
+            <div class="ev-item-body">
+              <div class="ev-item-title">${escapeHtml(ev.title)}</div>
+              ${ev.time?`<div class="ev-item-time">🕐 ${ev.time}</div>`:''}
+              ${ev.notes?`<div class="ev-item-notes">${escapeHtml(ev.notes)}</div>`:''}
+              ${ev.repeat==='yearly'&&cd.yearCount?`<div class="ev-item-anniv">${cd.yearCount}周年</div>`:''}
+            </div>
+            <button class="del-icon-btn" data-del-event="${ev.id}">✕</button>
+          </div>`;
+        }).join('')}
+        <form class="ev-add-form" id="form-event" data-date="${state.evSelected}">
+          <input name="title" placeholder="予定のタイトル✱" required class="${!isK?'pf':''}">
+          <div class="ev-form-row">
+            <input name="time" type="time" class="${!isK?'pf':''}">
+            <select name="category">${EVENT_CATS.map(c=>`<option value="${c}">${c}</option>`).join('')}</select>
+          </div>
+          <div class="ev-form-row">
+            <select name="repeat">
+              <option value="once">1回だけ</option>
+              <option value="yearly">毎年繰り返す</option>
+            </select>
+            <input type="hidden" name="date" value="${state.evSelected}">
+          </div>
+          <textarea name="notes" rows="2" placeholder="メモ（任意）" class="${!isK?'pf':''}"></textarea>
+          <button type="submit" class="submit-btn ${ac}">+ 追加</button>
+        </form>
+      </div>`;
+  }
+
+  // 今後の予定リスト（カレンダー下）
+  const upcoming = [...state.events]
+    .map(ev=>({...ev,...getCountdown(ev.date,ev.repeat)}))
+    .filter(ev=>ev.days!==null && ev.days>=0)
+    .sort((a,b)=>a.days-b.days)
+    .slice(0,10);
+
+  const catIcon2 = {'付き合い記念日':'💑','誕生日':'🎂','予定':'📌','イベント':'🎉','その他':'📅'};
+
+  return `
+    <div class="hero ${u}">
+      <div class="hero-tag">CALENDAR</div>
+      <h1>📅 カレンダー</h1>
+      <div class="hero-sub">記念日は💑🎂で特別表示されます</div>
+    </div>
+
+    <div class="section">
+      <div class="cal-nav">
+        <button class="cal-nav-btn" id="ev-prev">◀</button>
+        <span class="cal-month-label">${year}年 ${MONTH_NAMES[month]}</span>
+        <button class="cal-nav-btn" id="ev-next">▶</button>
+      </div>
+      <div class="cal-header">
+        ${['月','火','水','木','金','土','日'].map((d,i)=>`<div class="cal-head-cell ${i===6?'cal-sun':''} ${i===5?'cal-sat':''}">${d}</div>`).join('')}
+      </div>
+      <div class="cal-grid">${cells}</div>
+      ${detail}
+      ${!state.evSelected?`<p class="empty" style="text-align:center;">日付をタップして予定を確認・追加</p>`:''}
+    </div>
+
+    <div class="section">
+      <div class="section-title ${ac}">🗓 これからの予定</div>
+      ${upcoming.length===0?'<p class="empty">今後の予定がありません</p>':upcoming.map(ev=>`
+        <div class="upcoming-item ${isSpecial(ev)?'special':''}">
+          <div class="upcoming-left">
+            <span class="upcoming-icon">${catIcon2[ev.category]||'📅'}</span>
+            <div>
+              <div class="upcoming-title">${escapeHtml(ev.title)}</div>
+              <div class="upcoming-meta">
+                ${ev.nextDate}${ev.time?' '+ev.time:''}
+                ${ev.repeat==='yearly'&&ev.yearCount?` • ${ev.yearCount}周年`:''}
+              </div>
+            </div>
+          </div>
+          <div class="upcoming-days ${ev.days===0?'today':ev.days<=7?'soon':ev.days<=30?'near':'far'}">
+            ${ev.days===0?'今日！':ev.days+'日後'}
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ============================================================
 //  APP SHELL
 // ============================================================
 function appHTML() {
@@ -1066,6 +1280,7 @@ function appHTML() {
     ['shops', null, '📍 Shop'],
     ['goals', null, '🎯 目標'],
     ['trips', null, '✈️ 旅行'],
+    ['cal', null, '📅 カレンダー'],
   ];
 
   const sidebar = `
@@ -1078,7 +1293,7 @@ function appHTML() {
       </div>
       ${navItems.map(([p,gu,l]) => {
         const active = state.section===p;
-        const activeColor = p==='gym'?ac : p==='money'?'green' : p==='shops'?'blue' : p==='goals'?'orange' : p==='trips'?'purple' : ac;
+        const activeColor = p==='gym'?ac : p==='money'?'green' : p==='shops'?'blue' : p==='goals'?'orange' : p==='trips'?'purple' : p==='cal'?'orange' : ac;
         return `<button class="nav-btn ${active?'active-'+activeColor:''}" data-section="${p}" ${gu?`data-gymuser="${gu}"`:''}>${l}</button>`;
       }).join('')}
       <button class="logout-btn" id="btn-logout">← ユーザー切替</button>
@@ -1091,6 +1306,7 @@ function appHTML() {
   else if (state.section==='shops') body = shopsHTML(u, isK, ac);
   else if (state.section==='goals') body = goalsHTML(u, isK, ac);
   else if (state.section==='trips') body = tripsHTML(u, isK, ac);
+  else if (state.section==='cal') body = calendarEventsHTML(u, isK, ac);
   else body = shopsHTML(u, isK, ac);
 
   return `
@@ -1429,6 +1645,57 @@ function bindEvents() {
       state.shops=state.shops.filter(s=>s.id!==id); render();
       await removeShop(id);
       state.shops=await loadShops(); render();
+    });
+  });
+
+  // ── CALENDAR EVENTS ──
+  document.getElementById('ev-prev')?.addEventListener('click', ()=>{
+    state.evMonth--; if(state.evMonth<0){state.evMonth=11;state.evYear--;} state.evSelected=null; render();
+  });
+  document.getElementById('ev-next')?.addEventListener('click', ()=>{
+    state.evMonth++; if(state.evMonth>11){state.evMonth=0;state.evYear++;} state.evSelected=null; render();
+  });
+  document.querySelectorAll('[data-ev-date]').forEach(cell=>{
+    cell.addEventListener('click', ()=>{
+      const d=cell.dataset.evDate;
+      state.evSelected = state.evSelected===d ? null : d;
+      render();
+    });
+  });
+  document.getElementById('form-event')?.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f=e.target;
+    const data={ title:f.title.value.trim(), category:f.category.value, repeat:f.repeat.value, date:f.dataset.date||f.date.value, time:f.time?.value||'', notes:f.notes?.value?.trim()||'' };
+    state.events.push({id:'temp-'+Date.now(), user:state.user, ...data});
+    f.reset(); render();
+    await saveEvent(state.user, data);
+    state.events=await loadEvents(); render();
+  });
+  document.querySelectorAll('[data-del-event]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id=btn.dataset.delEvent;
+      state.events=state.events.filter(a=>a.id!==id); render();
+      await removeEvent(id);
+      state.events=await loadEvents(); render();
+    });
+  });
+
+  // ── ANNIVERSARIES ──
+  document.getElementById('form-event')?.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f=e.target;
+    const data={ title:f.title.value.trim(), category:f.category.value, repeat:f.repeat.value, date:f.date.value, time:f.time?.value||'', notes:f.notes?.value?.trim()||'' };
+    state.events.push({id:'temp-'+Date.now(), user:state.user, ...data});
+    f.reset(); render();
+    await saveEvent(state.user, data);
+    state.events=await loadEvents(); render();
+  });
+  document.querySelectorAll('[data-del-event]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id=btn.dataset.delEvent;
+      state.events=state.events.filter(a=>a.id!==id); render();
+      await removeEvent(id);
+      state.events=await loadEvents(); render();
     });
   });
 
