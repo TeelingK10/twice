@@ -257,12 +257,70 @@ function getCountdown(dateStr, repeat) {
 }
 
 async function loadAll() {
-  const [workouts, menus, money, shops, goals, trips, anniversaries] = await Promise.all([
-    loadWorkouts(), loadMenus(), loadMoney(), loadShops(), loadGoals(), loadTrips(), loadEvents(),
-  ]);
-  state.workouts = workouts; state.menus = menus; state.money = money;
-  state.shops = shops; state.goals = goals; state.trips = trips;
-  state.events = anniversaries;
+  // 1回のリクエストで全データを取得（7回→1回に削減）
+  const res = await gasGet({ action: 'getAllData' });
+  if (!res.ok) return;
+
+  function parseDate(v) {
+    if (!v) return '';
+    const s = String(v).trim();
+    if (s.includes('T') || s.includes('Z')) return localDateStr(new Date(s));
+    return s.slice(0, 10);
+  }
+
+  state.workouts = (res.workouts||[]).map(r => ({
+    id: String(r.id).trim(), user: String(r.user||'').trim(),
+    exercise: String(r.exercise||'').trim(), weight: parseFloat(r.weight)||0,
+    reps: parseInt(r.reps)||0, sets: parseInt(r.sets)||0, date: parseDate(r.date),
+  })).sort((a,b)=>b.id-a.id);
+
+  state.menus = (res.menus||[]).map(r => ({
+    id: String(r.id), user: r.user, day: parseInt(r.day),
+    order: parseInt(r.order), exercise: r.exercise,
+    target_sets: parseInt(r.target_sets), target_reps: parseInt(r.target_reps),
+    video_url: r.video_url||'',
+  }));
+
+  state.money = (res.money||[]).map(r => {
+    const rawKind = String(r.kind||r.type||'').trim();
+    const kindMap = { income:'deposit', expense:'wallet_expense' };
+    let date = String(r.date||'').trim();
+    if (date.includes('T')||date.includes('Z')) date = localDateStr(new Date(date));
+    else date = date.slice(0,10);
+    return {
+      id: String(r.id).trim(), user: String(r.user||'').trim(),
+      kind: kindMap[rawKind]||rawKind, category: String(r.category||'').trim(),
+      amount: parseFloat(String(r.amount).replace(/[^0-9.\-]/g,''))||0,
+      memo: String(r.memo||'').trim(), date, payee: String(r.payee||'').trim(),
+    };
+  }).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.id-a.id);
+
+  state.shops = (res.shops||[]).map(r => ({
+    id: String(r.id), user: r.user, name: r.name||'', category: r.category||'',
+    area: r.area||'', rating: parseFloat(r.rating)||0,
+    comment: r.comment||'', url: r.url||'', status: r.status||'want',
+  })).sort((a,b)=>b.rating-a.rating||b.id-a.id);
+
+  state.goals = (res.goals||[]).map(r => ({
+    id: String(r.id), user: r.user, title: r.title||'', category: r.category||'',
+    target_date: String(r.target_date||'').slice(0,10),
+    progress: Math.min(100,Math.max(0,parseInt(r.progress)||0)),
+    status: r.status||'active', memo: r.memo||'',
+  }));
+
+  state.trips = (res.trips||[]).map(r => ({
+    id: String(r.id), user: r.user, name: r.name||'', destination: r.destination||'',
+    start_date: String(r.start_date||'').slice(0,10),
+    end_date: String(r.end_date||'').slice(0,10),
+    budget: parseFloat(r.budget)||0, status: r.status||'計画中',
+    notes: r.notes||'', review: r.review||'',
+  }));
+
+  state.events = (res.events||[]).map(r => ({
+    id: String(r.id), user: r.user, title: r.title||'',
+    date: String(r.date||'').slice(0,10), time: r.time||'',
+    category: r.category||'その他', repeat: r.repeat||'once', notes: r.notes||'',
+  }));
 }
 
 // ============================================================
@@ -1855,10 +1913,11 @@ function bindEvents() {
 }
 
 async function login(user) {
-  state.user=user; state.section='home';
-  root.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;color:#6b7280;font-size:14px;letter-spacing:2px;">読み込み中...</div>`;
-  await loadAll();
-  render();
+  state.user = user;
+  state.section = 'home';
+  render(); // UIをすぐ表示（データなしで描画）
+  await loadAll(); // バックグラウンドで1リクエスト取得
+  render(); // データ反映
 }
 
 render();
