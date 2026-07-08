@@ -803,3 +803,17 @@ button{font-family:inherit;}
 .upcoming-days.soon{color:#fb923c;}
 .upcoming-days.near{color:#38bdf8;}
 .upcoming-days.far{color:#94a3b8;}
+
+/* ========================================
+   カレンダーイベント 編集フォーム
+======================================== */
+.ev-edit-form{
+  background:#f0f9ff;border:1px solid #38bdf8;border-radius:14px;
+  padding:14px;margin-bottom:8px;display:flex;flex-direction:column;gap:8px;
+}
+.ev-edit-form input,.ev-edit-form select,.ev-edit-form textarea{
+  padding:10px 12px;border:1px solid #d6eaf8;border-radius:12px;
+  background:#ffffff;color:#1e293b;font-size:15px;font-weight:600;width:100%;
+}
+.ev-edit-form input:focus,.ev-edit-form select:focus,.ev-edit-form textarea:focus{outline:none;border-color:#38bdf8;}
+.ev-edit-form textarea{font-family:inherit;resize:none;}
