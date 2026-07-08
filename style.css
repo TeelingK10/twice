@@ -817,3 +817,20 @@ button{font-family:inherit;}
 }
 .ev-edit-form input:focus,.ev-edit-form select:focus,.ev-edit-form textarea:focus{outline:none;border-color:#38bdf8;}
 .ev-edit-form textarea{font-family:inherit;resize:none;}
+
+/* ========================================
+   目標・旅行 編集フォーム
+======================================== */
+.goal-edit-form,.trip-edit-form{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+}
+.goal-edit-form input,.goal-edit-form select,
+.trip-edit-form input,.trip-edit-form select{
+  padding:11px 13px;border:1px solid #d6eaf8;border-radius:12px;
+  background:#eef7fd;color:#1e293b;font-size:15px;font-weight:600;width:100%;
+}
+.goal-edit-form input:focus,.goal-edit-form select:focus,
+.trip-edit-form input:focus,.trip-edit-form select:focus{outline:none;border-color:#38bdf8;}
+@media(max-width:700px){
+  .goal-edit-form,.trip-edit-form{grid-template-columns:1fr;}
+}
