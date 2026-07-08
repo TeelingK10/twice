@@ -1228,7 +1228,7 @@ function calendarEventsHTML(u, isK, ac) {
     .sort((a,b)=>a.days-b.days)
     .slice(0,10);
 
-  const catIcon2 = {'付き合い記念日':'💑','誕生日':'🎂','予定':'📌','イベント':'🎉','その他':'📅'};
+  const catIcon2 = {'付き合い記念日':';-)🙌','誕生日':'🎂','予定':'📌','イベント':'🎉','その他':'📅'};
 
   return `
     <div class="hero ${u}">
