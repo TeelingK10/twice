@@ -389,7 +389,7 @@ function homeHTML() {
           .sort((a,b)=>a.days-b.days)
           .slice(0,3);
         if (upcoming.length===0) return '';
-        const catIcon = {'付き合い記念日':'🙌','誕生日':'🎂','イベント':'🎉','その他':'📅'};
+        const catIcon = {'付き合い記念日':'😊','誕生日':'📅','イベント':'🎉','その他':'📅'};
         return `
           <div class="home-anniv-bar" style="margin-bottom:16px;">
             ${upcoming.map(a=>`
@@ -1182,7 +1182,7 @@ function calendarEventsHTML(u, isK, ac) {
   let detail = '';
   if (state.evSelected) {
     const evs = eventsForDate(state.evSelected);
-    const catIcon = {'付き合い記念日':'💑','誕生日':'🎂','予定':'📌','イベント':'🎉','その他':'📅'};
+    const catIcon = {'付き合い記念日':'😊','誕生日':'📅','予定':'📌','イベント':'🎉','その他':'📅'};
     const [,mm,dd] = state.evSelected.split('-');
     detail = `
       <div class="ev-detail">
@@ -1228,7 +1228,7 @@ function calendarEventsHTML(u, isK, ac) {
     .sort((a,b)=>a.days-b.days)
     .slice(0,10);
 
-  const catIcon2 = {'付き合い記念日':';-)🙌','誕生日':'🎂','予定':'📌','イベント':'🎉','その他':'📅'};
+  const catIcon2 = {'付き合い記念日':'😊','誕生日':'📅','予定':'📌','イベント':'🎉','その他':'📅'};
 
   return `
     <div class="hero ${u}">
