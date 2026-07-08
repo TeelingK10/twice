@@ -32,6 +32,8 @@ const state = {
   activeTripId: null,     // 展開中のトリップ
   activeTripTab: 'todo',  // 'todo' | 'shops'
   editingReviewId: null,  // 思い出メモ編集中のトリップID
+  editGoalId: null,
+  editTripId: null,
   calYear:     new Date().getFullYear(),
   calMonth:    new Date().getMonth(),
   calSelected: null,
@@ -902,11 +904,32 @@ function goalsHTML(u, isK, ac) {
     const pct = g.progress;
     const color = pct>=100?'#4ade80':pct>=50?'#38bdf8':'#fb923c';
     const overdue = g.target_date && g.target_date < today && g.status==='active';
+    const isEditing = state.editGoalId === g.id;
+
+    if (isEditing) return `
+      <div class="goal-card">
+        <form class="goal-edit-form" data-edit-id="${g.id}">
+          <input name="title" value="${escapeHtml(g.title)}" placeholder="目標タイトル" required>
+          <div class="ev-form-row">
+            <select name="category">${GOAL_CATS.map(c=>`<option value="${c}" ${g.category===c?'selected':''}>${c}</option>`).join('')}</select>
+            <input name="target_date" type="date" value="${g.target_date||''}">
+          </div>
+          <input name="memo" value="${escapeHtml(g.memo||'')}" placeholder="メモ">
+          <div style="display:flex;gap:8px;">
+            <button type="submit" class="submit-btn ${ac}" style="flex:1;padding:10px;">保存</button>
+            <button type="button" class="cancel-edit-btn" data-cancel-goal="${g.id}">キャンセル</button>
+          </div>
+        </form>
+      </div>`;
+
     return `
       <div class="goal-card ${g.status!=='active'?'goal-inactive':''}">
         <div class="goal-header">
           <span class="goal-cat-pill">${escapeHtml(g.category)}</span>
-          <span class="goal-by">by ${g.user==='kaito'?'かいと':'なな'}</span>
+          <div style="display:flex;gap:4px;align-items:center;">
+            <button class="edit-icon-btn" data-edit-goal="${g.id}" title="編集">✏️</button>
+            <span class="goal-by">by ${g.user==='kaito'?'かいと':'なな'}</span>
+          </div>
         </div>
         <div class="goal-title">${escapeHtml(g.title)}</div>
         ${g.memo?`<div class="goal-memo">${escapeHtml(g.memo)}</div>`:''}
@@ -994,6 +1017,24 @@ function tripsHTML(u, isK, ac) {
     const doneCnt    = myItems.filter(i=>i.done).length;
     const isWent     = t.status === '行った';
     const isEditingReview = state.editingReviewId === t.id;
+    const isEditingTrip   = state.editTripId === t.id;
+
+    if (isEditingTrip) return `
+      <div class="trip-card">
+        <form class="trip-edit-form" data-edit-id="${t.id}">
+          <input name="name" value="${escapeHtml(t.name)}" placeholder="旅行名" required style="grid-column:1/-1;">
+          <input name="destination" value="${escapeHtml(t.destination||'')}" placeholder="行き先">
+          <select name="status">${TRIP_STATUS_LIST.map(s=>`<option value="${s}" ${t.status===s?'selected':''}>${s}</option>`).join('')}</select>
+          <input name="start_date" type="date" value="${t.start_date||''}">
+          <input name="end_date" type="date" value="${t.end_date||''}">
+          <input name="budget" type="number" value="${t.budget||''}" placeholder="予算 ¥">
+          <input name="notes" value="${escapeHtml(t.notes||'')}" placeholder="メモ" style="grid-column:1/-1;">
+          <div style="display:flex;gap:8px;grid-column:1/-1;">
+            <button type="submit" class="submit-btn ${ac}" style="flex:1;padding:10px;">保存</button>
+            <button type="button" class="cancel-edit-btn" data-cancel-trip="${t.id}">キャンセル</button>
+          </div>
+        </form>
+      </div>`;
 
     return `
       <div class="trip-card">
@@ -1004,6 +1045,7 @@ function tripsHTML(u, isK, ac) {
           </div>
           <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
             <span class="trip-status-badge" style="background:${statusColor[t.status]||'#94a3b8'}22;color:${statusColor[t.status]||'#94a3b8'};border:1px solid ${statusColor[t.status]||'#94a3b8'}55;">${t.status}</span>
+            <button class="edit-icon-btn" data-edit-trip="${t.id}" title="編集">✏️</button>
             <button class="del-icon-btn" data-del-trip="${t.id}">✕</button>
           </div>
         </div>
@@ -1735,6 +1777,58 @@ function bindEvents() {
       state.events=state.events.filter(a=>a.id!==id); render();
       await removeEvent(id);
       state.events=await loadEvents(); render();
+    });
+  });
+
+  // ── GOALS 編集 ──
+  document.querySelectorAll('[data-edit-goal]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.editGoalId = state.editGoalId===btn.dataset.editGoal ? null : btn.dataset.editGoal;
+      render();
+    });
+  });
+  document.querySelectorAll('[data-cancel-goal]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ state.editGoalId=null; render(); });
+  });
+  document.querySelectorAll('.goal-edit-form').forEach(form=>{
+    form.addEventListener('submit', async e=>{
+      e.preventDefault();
+      const id=form.dataset.editId;
+      const orig=state.goals.find(g=>g.id===id);
+      if (!orig) return;
+      const data={ title:form.title.value.trim(), category:form.category.value, target_date:form.target_date.value||'', progress:orig.progress, status:orig.status, memo:form.memo.value.trim() };
+      state.goals=state.goals.filter(g=>g.id!==id);
+      state.goals.unshift({id:'temp-'+Date.now(), user:orig.user, ...data});
+      state.editGoalId=null; render();
+      await removeGoal(id);
+      await saveGoal(orig.user, data);
+      state.goals=await loadGoals(); render();
+    });
+  });
+
+  // ── TRIPS 編集 ──
+  document.querySelectorAll('[data-edit-trip]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.editTripId = state.editTripId===btn.dataset.editTrip ? null : btn.dataset.editTrip;
+      render();
+    });
+  });
+  document.querySelectorAll('[data-cancel-trip]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ state.editTripId=null; render(); });
+  });
+  document.querySelectorAll('.trip-edit-form').forEach(form=>{
+    form.addEventListener('submit', async e=>{
+      e.preventDefault();
+      const id=form.dataset.editId;
+      const orig=state.trips.find(t=>t.id===id);
+      if (!orig) return;
+      const data={ name:form.name.value.trim(), destination:form.destination.value.trim(), start_date:form.start_date.value||'', end_date:form.end_date.value||'', budget:parseFloat(form.budget.value)||0, status:form.status.value, notes:form.notes.value.trim(), review:orig.review||'' };
+      state.trips=state.trips.filter(t=>t.id!==id);
+      state.trips.unshift({id:'temp-'+Date.now(), user:orig.user, ...data});
+      state.editTripId=null; render();
+      await removeTrip(id);
+      await saveTrip(orig.user, data);
+      state.trips=await loadTrips(); render();
     });
   });
 
