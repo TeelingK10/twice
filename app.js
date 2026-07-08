@@ -26,6 +26,7 @@ const state = {
   evYear: new Date().getFullYear(),
   evMonth: new Date().getMonth(),
   evSelected: null,
+  editEventId: null,  // 編集中のイベントID
   tripItems:   [],
   tripShops:   [],        // 展開中トリップのお店リスト
   activeTripId: null,     // 展開中のトリップ
@@ -1190,6 +1191,27 @@ function calendarEventsHTML(u, isK, ac) {
         ${evs.length===0?'<p class="empty" style="font-size:12px;">この日の予定はありません</p>':''}
         ${evs.map(ev=>{
           const cd = getCountdown(ev.date, ev.repeat);
+          const isEditing = state.editEventId === ev.id;
+          if (isEditing) return `
+            <form class="ev-edit-form" data-edit-id="${ev.id}">
+              <input name="title" value="${escapeHtml(ev.title)}" placeholder="タイトル" required>
+              <div class="ev-form-row">
+                <input name="time" type="time" value="${ev.time||''}">
+                <select name="category">${EVENT_CATS.map(c=>`<option value="${c}" ${ev.category===c?'selected':''}>${c}</option>`).join('')}</select>
+              </div>
+              <div class="ev-form-row">
+                <input name="date" type="date" value="${ev.date}" required>
+                <select name="repeat">
+                  <option value="once" ${ev.repeat==='once'?'selected':''}>1回だけ</option>
+                  <option value="yearly" ${ev.repeat==='yearly'?'selected':''}>毎年繰り返す</option>
+                </select>
+              </div>
+              <textarea name="notes" rows="2" placeholder="メモ（任意）">${escapeHtml(ev.notes||'')}</textarea>
+              <div style="display:flex;gap:8px;">
+                <button type="submit" class="submit-btn ${ac}" style="flex:1;padding:10px;">保存</button>
+                <button type="button" class="cancel-edit-btn" data-cancel-event="${ev.id}">キャンセル</button>
+              </div>
+            </form>`;
           return `
           <div class="ev-item ${isSpecial(ev)?'special':''}">
             <span class="ev-item-icon">${catIcon[ev.category]||'📅'}</span>
@@ -1199,7 +1221,10 @@ function calendarEventsHTML(u, isK, ac) {
               ${ev.notes?`<div class="ev-item-notes">${escapeHtml(ev.notes)}</div>`:''}
               ${ev.repeat==='yearly'&&cd.yearCount?`<div class="ev-item-anniv">${cd.yearCount}周年</div>`:''}
             </div>
-            <button class="del-icon-btn" data-del-event="${ev.id}">✕</button>
+            <div style="display:flex;gap:4px;flex-shrink:0;">
+              <button class="edit-icon-btn" data-edit-event="${ev.id}">✏️</button>
+              <button class="del-icon-btn" data-del-event="${ev.id}">✕</button>
+            </div>
           </div>`;
         }).join('')}
         <form class="ev-add-form" id="form-event" data-date="${state.evSelected}">
@@ -1669,6 +1694,32 @@ function bindEvents() {
       render();
     });
   });
+  // Edit Event（✏️）
+  document.querySelectorAll('[data-edit-event]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.editEventId = state.editEventId===btn.dataset.editEvent ? null : btn.dataset.editEvent;
+      render();
+    });
+  });
+  document.querySelectorAll('[data-cancel-event]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ state.editEventId=null; render(); });
+  });
+  document.querySelectorAll('.ev-edit-form').forEach(form=>{
+    form.addEventListener('submit', async e=>{
+      e.preventDefault();
+      const id=form.dataset.editId;
+      const orig=state.events.find(ev=>ev.id===id);
+      if (!orig) return;
+      const data={ title:form.title.value.trim(), category:form.category.value, repeat:form.repeat.value, date:form.date.value, time:form.time?.value||'', notes:form.notes?.value?.trim()||'' };
+      state.events=state.events.filter(ev=>ev.id!==id);
+      state.events.push({id:'temp-'+Date.now(), user:orig.user, ...data});
+      state.editEventId=null; render();
+      await removeEvent(id);
+      await saveEvent(orig.user, data);
+      state.events=await loadEvents(); render();
+    });
+  });
+
   document.getElementById('form-event')?.addEventListener('submit', async e=>{
     e.preventDefault();
     const f=e.target;
