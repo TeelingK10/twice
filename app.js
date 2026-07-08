@@ -1687,25 +1687,6 @@ function bindEvents() {
     });
   });
 
-  // ── ANNIVERSARIES ──
-  document.getElementById('form-event')?.addEventListener('submit', async e=>{
-    e.preventDefault();
-    const f=e.target;
-    const data={ title:f.title.value.trim(), category:f.category.value, repeat:f.repeat.value, date:f.date.value, time:f.time?.value||'', notes:f.notes?.value?.trim()||'' };
-    state.events.push({id:'temp-'+Date.now(), user:state.user, ...data});
-    f.reset(); render();
-    await saveEvent(state.user, data);
-    state.events=await loadEvents(); render();
-  });
-  document.querySelectorAll('[data-del-event]').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      const id=btn.dataset.delEvent;
-      state.events=state.events.filter(a=>a.id!==id); render();
-      await removeEvent(id);
-      state.events=await loadEvents(); render();
-    });
-  });
-
   // ── GOALS ──
   document.getElementById('form-goal')?.addEventListener('submit', async e=>{
     e.preventDefault();
